@@ -1,5 +1,5 @@
 import { Redirect } from 'expo-router';
-import { useAuth } from '../features/auth/model';
+import { useAuth } from '@/features/auth/model';
 
 /**
  * Root index: redirect to login if not authenticated, else to app home.

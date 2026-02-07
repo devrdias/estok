@@ -6,6 +6,10 @@ App Expo (React Native) para lojas físicas. Nome e logo definidos com **ui-ux-p
 
 Telas seguem o design system **Sistema Estoque** (ui-ux-pro-max). Tokens em `shared/config/theme.ts`; componentes em `shared/ui` (Button, Card). Cores: primary `#15803D`, CTA `#0369A1`, background `#F0FDF4`. Alvos de toque mínimos 44px; espaçamento 8px entre botões.
 
+## Path aliases (tsconfig paths)
+
+Imports podem usar o alias `@/` em vez de caminhos relativos: `@/shared/config/theme`, `@/entities/contagem/model/types`, `@/features/auth/model`. Configurado em `tsconfig.json` (`paths`) e em `app.json` (`experiments.tsConfigPaths`). Metro resolve os paths em tempo de build.
+
 ## Estrutura (FSD)
 
 - **app/** — Expo Router (rotas): `(auth)/login`, `(app)/index` (Tela Inicial), `contagens`, `configuracoes`.
@@ -50,12 +54,12 @@ O build estático (`dist/`) pode ser publicado em qualquer hospedagem de arquivo
    ```
    Isso gera `dist/` e cria `dist/404.html` (cópia do `index.html`) para as rotas do Expo Router funcionarem em refresh/URL direta.
 
-2. **Site no repositório (ex.: `usuario.github.io/sistema-s`):**
-   - Em **app.json**, adicione o base path (troque `sistema-s` pelo nome do seu repo):
+2. **Site no repositório (ex.: `usuario.github.io/estok`):**
+   - Em **app.json**, adicione o base path (troque `estok` pelo nome do seu repo):
      ```json
      "expo": {
        "experiments": {
-         "baseUrl": "/sistema-s"
+         "baseUrl": "/estok"
        }
      }
      ```
@@ -66,7 +70,7 @@ O build estático (`dist/`) pode ser publicado em qualquer hospedagem de arquivo
 3. **Site em `usuario.github.io` (sem subpasta):** não é necessário `baseUrl`; basta apontar o Pages para a pasta do build (por exemplo via Actions publicando o conteúdo de `dist/` na branch `gh-pages` e escolhendo essa branch em Settings → Pages).
 
 4. **Deploy automático com GitHub Actions:** o repositório inclui o workflow `.github/workflows/deploy-web-gh-pages.yml`. Ele roda a cada push em `main`: faz o build em `mobile/` e publica `mobile/dist` na branch `gh-pages`. Para ativar:
-   - Em **app.json** (mobile), defina `expo.experiments.baseUrl` com o nome do repositório (ex.: `"/sistema-s"`).
+   - Em **app.json** (mobile), defina `expo.experiments.baseUrl` com o nome do repositório (ex.: `"/estok"`).
    - No GitHub: **Settings → Pages → Build and deployment → Source**: "Deploy from a branch"; **Branch**: `gh-pages`, pasta **/ (root)**.
    - Após o primeiro push em `main`, o workflow gera a branch `gh-pages`; o site ficará em `https://<user>.github.io/<repo>/`.
 
@@ -79,6 +83,10 @@ Para usar login real com Google em vez do mock, defina no ambiente (ex.: `.env` 
 
 Sem essas variáveis, o app usa usuário mock ao tocar em "Entrar com Google". A sessão é persistida com `expo-secure-store` quando Google está configurado.
 
+### Provedor ERP (Fase 2)
+
+- `EXPO_PUBLIC_ERP_PROVIDER` — `mock` (padrão) ou `cplug`. Com `cplug`, o app usa o stub em `shared/api/cplug-erp-provider.ts` (listas vazias; criar/editar ainda não implementados). Substitua o stub pela integração real quando o backend CPlug estiver pronto.
+
 ## i18n
 
 PT e EN em `shared/config/i18n.ts`. Chaves: `home.*`, `auth.*`, `counts.*`, `settings.*`, `common.*`.
@@ -86,12 +94,12 @@ PT e EN em `shared/config/i18n.ts`. Chaves: `home.*`, `auth.*`, `counts.*`, `set
 ## Estado atual
 
 - **Auth:** Google OAuth via `expo-auth-session` quando `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` está definido; senão mock. Sessão persistida com `expo-secure-store`.
-- **ERP:** `shared/api`: contrato `ErpProvider` + `mockErpProvider`; trocar por adapter CPlug quando backend estiver pronto.
+- **ERP:** `shared/api`: contrato `ErpProvider`, `mockErpProvider` e stub `cplugErpProvider`; injeção por `EXPO_PUBLIC_ERP_PROVIDER` (mock|cplug). Configurações: ordem da lista na contagem (nome/código/valor) persistida em SecureStore.
 - **Telas:** Login → Tela Inicial → Contagem / Configurações / Sair; listagem de contagens; nova contagem (Estoque + Valor); contagem de fato (resumo + tabela + registrar quantidade).
 
 ## Próximos passos (../tasks/todo.md)
 
-- Backend + adapter CPlug (substituir `mockErpProvider`).
-- Validações na contagem de fato (PDV online, transferências, divergência às cegas).
+- Backend + implementação real do CPlug em `cplug-erp-provider.ts`.
+- Fase 2: estrutura mercadológica, relatórios, filtros salvos (ver `../docs/phase2-and-pending.md`).
 
 - Configurar Google OAuth no projeto (client IDs) para produção.

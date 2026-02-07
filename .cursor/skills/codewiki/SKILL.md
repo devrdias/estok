@@ -22,7 +22,7 @@ Check Python:
 python3 --version || python --version
 ```
 
-### Testing in this repo (sistema-s)
+### Testing in this repo (estok)
 
 This repo has a pre-wired CodeWiki setup to avoid Python 3.12 and SSL issues:
 

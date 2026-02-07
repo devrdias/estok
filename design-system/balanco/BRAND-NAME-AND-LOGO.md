@@ -40,8 +40,9 @@ Source: `design-system/balanco/MASTER.md`.
 
 ### Files
 
-- **Logo mark (SVG):** `mobile/assets/logo.svg` — stacked blocks, primary green.
-- **Full lockup (wordmark):** Can be added later (Balanço + mark); typography: Rubik (MASTER).
+- **Logo mark (SVG):** `mobile/assets/logo.svg` — stacked blocks (48×48 viewBox), primary `#15803D`, top block `#22C55E`. Use for app icon source, in-app mark.
+- **Logo + wordmark (SVG):** `mobile/assets/logo-wordmark.svg` — mark + “Balanço” (Rubik 700, `#14532D`). Use for splash, header, settings.
+- **Icon (SVG):** `mobile/assets/logo-icon.svg` — compact 32×32 mark for favicon, tab bar, small contexts.
 
 ---
 
@@ -51,5 +52,5 @@ Source: `design-system/balanco/MASTER.md`.
 |--------|--------|
 | **Name** | Balanço |
 | **Code/ASCII** | Balanco |
-| **Logo** | Geometric stacked blocks (SVG), primary `#15803D` |
+| **Logo** | Geometric stacked blocks (SVG); `logo.svg`, `logo-wordmark.svg`, `logo-icon.svg`; primary `#15803D`, secondary `#22C55E` |
 | **Typography** | Rubik (headings), Nunito Sans (body) — see MASTER.md |

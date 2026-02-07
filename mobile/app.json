@@ -27,12 +27,14 @@
       "favicon": "./assets/favicon.png"
     },
     "experiments": {
-      "baseUrl": "/sistema-s"
+      "baseUrl": "/estok",
+      "tsConfigPaths": true
     },
     "plugins": [
       "expo-router",
       "expo-web-browser",
-      "expo-secure-store"
+      "expo-secure-store",
+      "@react-native-community/datetimepicker"
     ]
   }
 }

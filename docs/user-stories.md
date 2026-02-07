@@ -194,6 +194,8 @@ Documento de histórias de usuário derivado dos wireframes. Sistema para lojas 
 
 ## 4. Contagem de Fato (Contagem 3)
 
+**Contexto (tela de cima para baixo):** No topo da página devem aparecer informações sobre o andamento da contagem (data de início, quantidade de produtos a contar, já contados, etc.). Abaixo, uma tabela onde o usuário informa as quantidades contadas. Ao chegar na tela, o sistema lista todos os produtos a contar (ordem configurável em Configurações: nome, código ou valor). Ao informar a quantidade e confirmar (ex.: tecla ENTER), o sistema executa **três validações em ordem**: (1) PDVs vinculados ao estoque estão online — se algum estiver offline, exibe mensagem para conectar e não registra; (2) o produto não possui transferências de estoque pendentes — se houver, exibe mensagem para finalizar e não registra; (3) se a quantidade informada confere com a do sistema, registra e segue; se divergir, pergunta se deseja recontar e corrigir — **Não** registra a informada; **Sim** dá **uma única** nova chance; se após essa chance ainda houver divergência, registra mesmo assim (evitar “contagem às cegas”). As user stories abaixo detalham cada parte.
+
 ### US-4.1 Ver resumo da contagem em andamento
 **Como** usuário  
 **Quero** ver um resumo da contagem em andamento no topo da tela  
@@ -212,7 +214,7 @@ Documento de histórias de usuário derivado dos wireframes. Sistema para lojas 
 
 **Critérios de aceite:**
 - A tela exibe uma tabela com: Código, Produto, Valor (unitário), Qtd. contada (editável), Qtd. sistema, Saldo (diferença), Data/hora da contagem.
-- O usuário informa a quantidade contada e confirma (ex.: Enter).
+- O usuário informa a quantidade contada e confirma (tecla Enter / Done no teclado ou botão OK). Ao confirmar, o sistema executa as validações US-4.4 e US-4.5 antes de registrar (ou exibir o fluxo de divergência US-4.7).
 - O sistema calcula e exibe o saldo (diferença entre contada e sistema).
 - A data/hora do registro da contagem é armazenada e exibida.
 
@@ -224,52 +226,54 @@ Documento de histórias de usuário derivado dos wireframes. Sistema para lojas 
 **Para** realizar a contagem de forma mais eficiente.
 
 **Critérios de aceite:**
-- A lista de produtos possui ordem definida (configurável ou padrão), por exemplo por nome ou valor.
+- A lista de produtos possui ordem definida e **configurável em Configurações**: por nome (alfabética), por código ou por valor (do mais barato ao mais caro ou equivalente).
 
 ---
 
-### US-4.4 Validação: PDV online
+### US-4.4 Validação: PDV online (1ª validação)
 **Como** sistema  
 **Quero** verificar se os PDVs vinculados ao estoque em contagem estão online antes de aceitar o registro  
 **Para** evitar inconsistências por vendas não refletidas.
 
 **Critérios de aceite:**
-- Ao registrar uma quantidade contada (ex.: ao pressionar Enter), o sistema verifica se há PDV vinculado ao estoque offline.
-- Se algum PDV estiver offline, exibe mensagem orientando o usuário a conectá-lo e não registra até que estejam online (ou conforme regra de negócio).
+- Ao confirmar a quantidade contada (ex.: Enter ou OK), o sistema executa esta verificação **em primeiro lugar**: há PDV vinculado ao estoque offline?
+- Se algum PDV estiver offline, exibe mensagem orientando o usuário a conectá-lo e não registra (não segue para as demais validações).
 
 ---
 
-### US-4.5 Validação: transferências pendentes
+### US-4.5 Validação: transferências pendentes (2ª validação)
 **Como** sistema  
 **Quero** verificar se o produto possui transferências de estoque pendentes antes de aceitar o registro  
 **Para** garantir consistência com movimentações em aberto.
 
 **Critérios de aceite:**
-- Ao registrar quantidade contada, o sistema verifica se existem transferências pendentes para aquele produto.
-- Se houver, exibe mensagem orientando a finalizar as transferências e não registra até que não haja pendências (ou conforme regra de negócio).
+- Após a validação US-4.4 (PDV online), o sistema verifica se existem transferências pendentes para aquele produto.
+- Se houver, exibe mensagem orientando a finalizar as transferências e não registra (não segue para o registro nem para o fluxo de divergência).
 
 ---
 
-### US-4.6 Registro quando quantidade confere
+### US-4.6 Registro quando quantidade confere (3ª validação / caso sem divergência)
 **Como** usuário  
 **Quero** que, quando a quantidade contada for igual à do sistema, o sistema registre e permita seguir para o próximo produto  
 **Para** agilizar a contagem quando não há divergência.
 
 **Critérios de aceite:**
-- Se Qtd. contada = Qtd. sistema, o sistema grava o registro e permite seguir para o próximo item sem fluxo extra.
+- Após as validações US-4.4 e US-4.5, se Qtd. contada = Qtd. sistema, o sistema grava o registro e permite seguir para o próximo item sem fluxo extra.
 
 ---
 
-### US-4.7 Tratamento de divergência (contagem às cegas)
+### US-4.7 Tratamento de divergência (contagem às cegas) (3ª validação / caso divergente)
 **Como** usuário  
 **Quero** que, em caso de divergência, o sistema informe e me dê uma única chance de corrigir  
 **Para** evitar tentativas repetidas de “acertar” o número do sistema (contagem às cegas).
 
 **Critérios de aceite:**
-- Se Qtd. contada ≠ Qtd. sistema, o sistema informa a divergência e pergunta se o usuário deseja refazer a contagem e corrigir.
+- Após US-4.4 e US-4.5, se Qtd. contada ≠ Qtd. sistema, o sistema informa a divergência e pergunta se o usuário deseja refazer a contagem e corrigir.
 - **Não:** o sistema registra a quantidade informada (divergente) e segue.
 - **Sim:** o usuário tem **uma única** nova chance de informar outra quantidade.
 - Após essa única nova tentativa: se ainda houver divergência, o sistema registra essa segunda quantidade divergente e segue (sem novas tentativas).
+
+**Implementação (app):** A tela Contagem 3 (`contagens/[id]`) implementa este fluxo: resumo no topo (US-4.1), tabela com produtos ordenados conforme Configurações (US-4.3), entrada de quantidade com confirmação por tecla Enter/Done ou botão OK (US-4.2). Ao confirmar, são executadas em ordem: (1) verificação PDV online (US-4.4), (2) verificação de transferências pendentes (US-4.5); em seguida, registro direto se quantidade confere (US-4.6) ou diálogo de divergência com uma única chance de recontar (US-4.7).
 
 ---
 

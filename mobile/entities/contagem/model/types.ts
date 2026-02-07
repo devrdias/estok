@@ -26,4 +26,10 @@ export interface Contagem {
   status: CountStatusValue;
   criadoEm: string;
   criadoPor?: string;
+  /** Fase 2 auditoria: quem e quando finalizou. */
+  finalizadoPor?: string;
+  finalizadoEm?: string;
+  /** Fase 2 auditoria: soft-delete — quem e quando excluiu. */
+  excluidoPor?: string;
+  excluidoEm?: string;
 }

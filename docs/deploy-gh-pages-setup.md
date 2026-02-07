@@ -1,6 +1,7 @@
 # Deploy no GitHub Pages (primeira vez)
 
-Repositório já está com **commit inicial** e **remote** `origin` apontando para `git@github.com:devrdias/sistema-s.git`.
+Repositório já está com **commit inicial** e **remote** `origin` apontando para `git@github.com:devrdias/estok.git`.  
+(Se o remote ainda for `sistema-s`, atualize: `git remote set-url origin git@github.com:devrdias/estok.git`.)
 
 ## 1. Autenticar SSH (conta devrdias)
 
@@ -29,7 +30,7 @@ export GITHUB_TOKEN=ghp_xxxx   # token com escopo repo
 **Opção C – Manual**
 
 1. Crie o repositório em: https://github.com/new  
-   - Nome: `sistema-s`  
+   - Nome: `estok`  
    - Visibilidade: **Private**  
    - Não marque “Add a README” (já existe no projeto).
 
@@ -49,4 +50,4 @@ git push -u origin main
 3. Salve. O workflow **Deploy Web to GitHub Pages** roda a cada push em `main` e publica o build em `mobile/dist` na branch `gh-pages`.
 4. Se a branch `gh-pages` ainda não existir, faça um push em `main` (ou dispare o workflow manualmente em **Actions**). Depois que o job terminar, volte em **Settings → Pages** e selecione a branch `gh-pages`.
 
-Site final: **https://devrdias.github.io/sistema-s/**
+Site final: **https://devrdias.github.io/estok/**

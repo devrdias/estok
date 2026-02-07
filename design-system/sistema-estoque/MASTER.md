@@ -6,7 +6,7 @@
 
 ---
 
-**Project:** Sistema Estoque
+**Project:** Estok (Sistema Estoque)
 **Generated:** 2026-02-06 23:03:05
 **Category:** E-commerce
 

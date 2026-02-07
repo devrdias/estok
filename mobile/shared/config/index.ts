@@ -1,5 +1,21 @@
 /**
- * Shared config (constants, env, theme).
+ * Shared config (constants, env, theme, preferences).
  */
-export { theme } from './theme';
-export type { Theme } from './theme';
+export { theme, getTheme, lightColors, darkColors } from './theme';
+export type { Theme, ColorScheme } from './theme';
+export { ThemeProvider, useTheme, useThemePreference, useColorSchemeTheme } from './theme-context';
+export {
+  getStoredProductSortOrder,
+  setStoredProductSortOrder,
+  ProductSortOrder,
+  getStoredCountListFilters,
+  setStoredCountListFilters,
+  getStoredThemePreference,
+  setStoredThemePreference,
+  isoToDisplayDate,
+} from './preferences';
+export type {
+  ProductSortOrderValue,
+  StoredCountListFilters,
+  ThemePreferenceValue,
+} from './preferences';

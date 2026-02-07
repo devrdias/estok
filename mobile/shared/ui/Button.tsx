@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, Text, StyleSheet, ViewStyle, ActivityIndicator } from 'react-native';
-import { theme } from '../config/theme';
+import { useTheme } from '@/shared/config';
 
 export interface ButtonProps {
   onPress: () => void;
@@ -15,6 +15,7 @@ export interface ButtonProps {
 
 /**
  * Themed button. Min touch 44px, design-system colors (CTA primary, outline secondary).
+ * Respects light/dark theme.
  */
 export function Button({
   onPress,
@@ -26,8 +27,33 @@ export function Button({
   style,
   fullWidth,
 }: ButtonProps) {
+  const theme = useTheme();
   const isOutline = variant === 'outline' || variant === 'secondary';
   const isDanger = variant === 'danger';
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        base: {
+          minHeight: theme.minTouchSize,
+          paddingHorizontal: theme.spacing.lg,
+          paddingVertical: 14,
+          borderRadius: theme.radius.md,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        fullWidth: { width: '100%', maxWidth: 280 },
+        primary: { backgroundColor: theme.colors.cta },
+        secondary: { backgroundColor: theme.colors.primary },
+        outline: { backgroundColor: 'transparent', borderWidth: 2, borderColor: theme.colors.primary },
+        danger: { backgroundColor: theme.colors.danger },
+        pressed: { opacity: 0.9 },
+        text: { color: theme.colors.white, fontSize: 16, fontWeight: '600' },
+        textOutline: { color: theme.colors.primary },
+        textDanger: { color: theme.colors.white },
+      }),
+    [theme]
+  );
 
   return (
     <Pressable
@@ -52,27 +78,3 @@ export function Button({
     </Pressable>
   );
 }
-
-const minH = theme.minTouchSize;
-const paddingH = theme.spacing.lg;
-const paddingV = 14;
-
-const styles = StyleSheet.create({
-  base: {
-    minHeight: minH,
-    paddingHorizontal: paddingH,
-    paddingVertical: paddingV,
-    borderRadius: theme.radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fullWidth: { width: '100%', maxWidth: 280 },
-  primary: { backgroundColor: theme.colors.cta },
-  secondary: { backgroundColor: theme.colors.primary },
-  outline: { backgroundColor: 'transparent', borderWidth: 2, borderColor: theme.colors.primary },
-  danger: { backgroundColor: theme.colors.danger },
-  pressed: { opacity: 0.9 },
-  text: { color: theme.colors.white, fontSize: 16, fontWeight: '600' },
-  textOutline: { color: theme.colors.primary },
-  textDanger: { color: theme.colors.white },
-});

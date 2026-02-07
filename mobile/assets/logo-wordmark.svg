@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 48" fill="none" aria-hidden="true" role="img">
+  <title>Balanço</title>
+  <!-- Mark: stacked blocks -->
+  <rect x="2" y="28" width="28" height="12" rx="3" fill="#15803D"/>
+  <rect x="4" y="18" width="24" height="12" rx="3" fill="#15803D"/>
+  <rect x="6" y="8" width="20" height="12" rx="3" fill="#22C55E"/>
+  <!-- Wordmark -->
+  <text x="42" y="32" font-family="Rubik, system-ui, sans-serif" font-weight="700" font-size="22" fill="#14532D">Balanço</text>
+</svg>
