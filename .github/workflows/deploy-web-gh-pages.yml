@@ -1,6 +1,8 @@
 # Deploy do app web (Expo) para GitHub Pages.
-# Site fica em: https://<user>.github.io/<repo>/
-# Em app.json (mobile) configure: "expo": { "experiments": { "baseUrl": "/<repo>" } }
+# Site: https://<user>.github.io/<repo>/
+# Em app.json (mobile): "expo": { "experiments": { "baseUrl": "/<repo>" } }
+#
+# IMPORTANTE: Em Settings → Pages, use Source = "GitHub Actions" (não "Deploy from a branch").
 name: Deploy Web to GitHub Pages
 
 on:
@@ -8,17 +10,12 @@ on:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
 concurrency:
   group: 'pages'
   cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,13 +29,42 @@ jobs:
 
       - name: Install and build
         working-directory: mobile
+        env:
+          NODE_OPTIONS: '--max-old-space-size=4096'
         run: |
           npm ci
           npm run build:web:gh-pages
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Verify build output
+        run: |
+          test -f mobile/dist/index.html || { echo "Build failed: mobile/dist/index.html missing"; exit 1; }
+          test -f mobile/dist/404.html || { echo "Build failed: mobile/dist/404.html missing"; exit 1; }
+          echo "Build output OK"
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: mobile/dist
-          cname: # opcional: seu domínio customizado
+          path: mobile/dist
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Deployment URL
+        run: |
+          echo "✅ Deploy finished. Site (propaga em ~1 min):"
+          echo "   ${{ steps.deployment.outputs.page_url }}"
