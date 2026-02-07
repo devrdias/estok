@@ -1,0 +1,617 @@
+---
+alwaysApply: true
+---
+
+# Expo & React Native Development Rules
+
+## Core Development Principles
+
+### TypeScript & Code Quality
+- **Use TypeScript for all code**; prefer interfaces over types
+- **Avoid enums**; use maps instead
+- **Use functional components** with TypeScript interfaces
+- **Use strict mode** in TypeScript for better type safety
+- **Write concise, technical TypeScript code** with accurate examples
+- **Use functional and declarative programming patterns**; avoid classes
+- **Prefer iteration and modularization** over code duplication
+- **Use descriptive variable names** with auxiliary verbs (e.g., `isLoading`, `hasError`)
+
+### Code Style and Structure
+- **Structure files**: exported component, subcomponents, helpers, static content, types
+- **Use the "function" keyword** for pure functions
+- **Avoid unnecessary curly braces** in conditionals; use concise syntax for simple statements
+- **Use declarative JSX**
+- **Use Prettier** for consistent code formatting
+- **Follow Expo's official documentation**: https://docs.expo.dev/
+
+### Naming Conventions
+- **Components**: `PascalCase` (e.g., `UserProfile.tsx`)
+- **Hooks**: `camelCase` with `use` prefix (e.g., `useUserProfile.ts`)
+- **Utilities**: `camelCase` (e.g., `formatDate.ts`)
+- **Types**: `PascalCase` (e.g., `UserProfile.types.ts`)
+- **Directories**: `kebab-case` (e.g., `components/auth-wizard`)
+- **Favor named exports** for components
+
+## Platform-Specific Development
+
+### Cross-Platform Abstraction
+- **Apply platform abstraction** for cross-platform code
+- **Use abstraction layers** to minimize platform-specific code
+- **Create consistent APIs** across different implementations
+- **Use platform-specific files** when needed (e.g., `.ios.ts`, `.android.ts`, `.web.ts`)
+- **Always test on all target platforms** before considering a feature complete
+
+### Platform Detection & Imports
+```typescript
+// ✅ GOOD: Platform detection and platform-specific imports
+import { Platform } from 'react-native';
+
+const isIOS = Platform.OS === 'ios';
+const isAndroid = Platform.OS === 'android';
+const isWeb = Platform.OS === 'web';
+
+// Use platform-specific implementations
+const AudioService = isIOS ? IOSAudioService : AndroidAudioService;
+
+// ✅ GOOD: Platform.select for platform-specific components
+const Button = Platform.select({
+  ios: () => require('./Button.ios').default,
+  android: () => require('./Button.android').default,
+  default: () => require('./Button.web').default,
+})();
+```
+
+### iOS Development
+- **Use iOS-specific APIs** when needed
+- **Handle iOS permissions** properly
+- **Implement iOS UI patterns** and interactions
+- **Test iOS-specific behavior** thoroughly
+
+### Android Development
+- **Use Android-specific APIs** when needed
+- **Handle Android permissions** properly
+- **Implement Android UI patterns** and navigation
+- **Test Android-specific behavior** thoroughly
+
+### Platform Examples
+```typescript
+// ✅ GOOD: Platform-specific implementations
+import { Platform } from 'react-native';
+
+const getAudioSession = () => {
+  if (Platform.OS === 'ios') {
+    return Audio.Session.Category.PlayAndRecord;
+  }
+  return Audio.Session.Category.Playback;
+};
+
+const getNotificationChannel = () => {
+  if (Platform.OS === 'android') {
+    return {
+      id: 'consultations',
+      name: 'Consultation Notifications',
+      importance: Notifications.AndroidImportance.HIGH,
+    };
+  }
+  return null;
+};
+```
+
+## Expo SDK & Modules
+
+### Official Modules (CRITICAL)
+- **Use official Expo modules** when available instead of third-party alternatives
+- **Follow Expo SDK versioning guidelines** strictly
+- **Lock Expo SDK version** in package.json and use compatible module versions
+- **Handle Expo module availability** gracefully with fallbacks and proper error boundaries
+
+### Module Usage Examples
+```typescript
+// ✅ GOOD: Official Expo modules with error handling
+import * as Audio from 'expo-av';
+import * as Haptics from 'expo-haptics';
+import * as SecureStore from 'expo-secure-store';
+import * as FileSystem from 'expo-file-system';
+
+const playHaptic = async () => {
+  try {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  } catch (error) {
+    console.warn('Haptics not supported on this device');
+  }
+};
+```
+
+## Navigation & Routing
+
+### Expo Router (RECOMMENDED)
+- **Use file-based routing** with Expo Router
+- **Follow the app directory structure** for routing
+- **Use proper navigation patterns** for mobile apps
+- **Handle deep linking** appropriately
+- **Manage navigation state** and handle navigation events
+- **Use navigation lifecycle hooks** appropriately (focus, blur, beforeRemove)
+
+### Navigation Examples
+```typescript
+// ✅ GOOD: Expo Router usage
+import { router } from 'expo-router';
+
+router.push('/consultations/123');
+router.back();
+router.replace('/home');
+router.push({
+  pathname: '/consultations/[id]',
+  params: { id: '123' }
+});
+```
+
+### Directory Structure
+```
+app/
+├── _layout.tsx
+├── (auth)/
+│   ├── _layout.tsx
+│   ├── index.tsx
+│   ├── sign-up.tsx
+│   └── forgot-password.tsx
+├── (app)/
+│   ├── _layout.tsx
+│   ├── index.tsx
+│   ├── consultations/
+│   │   ├── _layout.tsx
+│   │   ├── index.tsx
+│   │   └── [id].tsx
+│   └── settings.tsx
+└── +not-found.tsx
+```
+
+## UI & Styling
+
+### Component Guidelines
+- **Use Expo's built-in components** for common UI patterns and layouts
+- **Implement responsive design** with Flexbox and Expo's `useWindowDimensions`
+- **Use styled-components or Tailwind CSS** for component styling
+- **Implement dark mode support** using Expo's `useColorScheme`
+- **Ensure high accessibility (a11y) standards** using ARIA roles and native accessibility props
+- **Leverage react-native-reanimated and react-native-gesture-handler** for performant animations
+
+### Safe Area Management
+- **Use SafeAreaProvider** from `react-native-safe-area-context` globally
+- **Wrap top-level components** with SafeAreaView for notches, status bars, screen insets
+- **Use SafeAreaScrollView** for scrollable content
+- **Avoid hardcoding padding/margins** for safe areas; rely on SafeAreaView and context hooks
+
+### Mobile-Specific UI Considerations
+- **Use proper touch targets** (at least 44x44 points)
+- **Implement haptic and visual feedback**
+- **Handle touch states** (pressed, disabled, loading)
+- **Support accessibility features**
+- **Handle orientation changes** and use responsive layouts
+- **Test both landscape and portrait modes**
+- **Consider device-specific layouts** (tablets vs phones)
+
+### Touch & Gesture Examples
+```typescript
+// ✅ GOOD: Proper touch targets and feedback
+import { Pressable, Haptics } from 'expo-haptics';
+
+const Button = ({ onPress, disabled, children }) => (
+  <Pressable
+    onPress={() => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      onPress();
+    }}
+    disabled={disabled}
+    style={({ pressed }) => [
+      styles.button,
+      pressed && styles.pressed,
+      disabled && styles.disabled,
+    ]}
+  >
+    {children}
+  </Pressable>
+);
+```
+
+## Performance Optimization
+
+### React Performance
+- **Minimize useState and useEffect**; prefer context and reducers for state management
+- **Use React.memo** for expensive components
+- **Use useMemo/useCallback** for expensive calculations
+- **Avoid unnecessary re-renders** by memoizing components appropriately
+- **Profile and monitor performance** using React Native's built-in tools
+
+### Mobile-Specific Optimization
+- **Use Expo's AppLoading and SplashScreen** for optimized app startup
+- **Optimize images**: use WebP format where supported, include size data, implement lazy loading with `expo-image`
+- **Implement code splitting** and lazy loading for non-critical components with React's Suspense and dynamic imports
+- **Monitor memory usage** during development
+- **Use memory-efficient data structures**
+
+### List Performance
+- **Use FlatList or VirtualizedList** for long lists
+- **Use proper key props** for list items
+- **Use getItemLayout** when possible for fixed-height items
+- **Avoid unnecessary re-renders** in list items
+
+### Performance Examples
+```typescript
+// ✅ GOOD: Memoized expensive component
+import { useCallback, useMemo } from 'react';
+
+const ConsultationList = ({ consultations }) => {
+  const sortedConsultations = useMemo(() => {
+    return consultations.sort((a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [consultations]);
+
+  const handleConsultationPress = useCallback((consultation) => {
+    router.push(`/consultations/${consultation.id}`);
+  }, []);
+
+  return (
+    <FlatList
+      data={sortedConsultations}
+      renderItem={({ item }) => (
+        <ConsultationItem
+          consultation={item}
+          onPress={() => handleConsultationPress(item)}
+        />
+      )}
+      keyExtractor={(item) => item.id}
+      getItemLayout={(data, index) => ({
+        length: ITEM_HEIGHT,
+        offset: ITEM_HEIGHT * index,
+        index,
+      })}
+    />
+  );
+};
+
+// ✅ GOOD: Memory leak prevention
+useEffect(() => {
+  const subscription = audioService.onAudioChange(handleAudioChange);
+
+  return () => {
+    subscription.remove();
+    audioService.cleanup();
+  };
+}, [audioService]);
+```
+
+## State Management
+
+### Recommended Patterns
+- **Use React Context and useReducer** for managing global state
+- **Leverage react-query** for data fetching and caching; avoid excessive API calls
+- **For complex state management**, consider using Zustand or Redux Toolkit
+- **Handle URL search parameters** using libraries like `expo-linking`
+
+## Error Handling & Validation
+
+### Error Handling Patterns
+- **Use Zod** for runtime validation and error handling
+- **Implement proper error logging** using Sentry or similar service
+- **Handle errors at the beginning** of functions
+- **Use early returns** for error conditions to avoid deeply nested if statements
+- **Avoid unnecessary else statements**; use if-return pattern instead
+- **Implement global error boundaries** to catch and handle unexpected errors
+- **Use expo-error-reporter** for logging and reporting errors in production
+
+### Mobile-Specific Error Handling
+- **Handle network connectivity issues** with user guidance
+- **Handle storage limitations** gracefully
+- **Handle permission denials** with proper user guidance
+- **Provide offline functionality** where possible
+
+### Error Handling Examples
+```typescript
+// ✅ GOOD: Early return error handling
+const processUserData = (userData: unknown) => {
+  if (!userData) {
+    loggerService.error('User data is required');
+    return null;
+  }
+
+  if (typeof userData !== 'object') {
+    loggerService.error('User data must be an object');
+    return null;
+  }
+
+  // Process valid data
+  return processValidUserData(userData);
+};
+
+// ✅ GOOD: Mobile-specific error handling
+const handleError = (error: Error) => {
+  if (error.message.includes('permission')) {
+    // Guide user to settings
+    Alert.alert(
+      'Permission Required',
+      'Please enable microphone access in Settings',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Settings', onPress: () => Linking.openSettings() }
+      ]
+    );
+  } else if (error.message.includes('network')) {
+    // Handle offline state
+    showOfflineMessage();
+  }
+};
+```
+
+## Security
+
+### Secure Storage (CRITICAL)
+- **Use expo-secure-store** for sensitive data
+- **Never store credentials** in plain text
+- **Implement proper encryption** for critical data
+- **Handle key management** securely
+
+### Security Examples
+```typescript
+// ✅ GOOD: Secure storage implementation
+import * as SecureStore from 'expo-secure-store';
+
+const storeToken = async (token: string) => {
+  try {
+    await SecureStore.setItemAsync('auth_token', token, {
+      requireAuthentication: true,
+      authenticationPrompt: 'Authenticate to access your account',
+    });
+  } catch (error) {
+    console.error('Failed to store token securely:', error);
+    throw error;
+  }
+};
+
+const getToken = async (): Promise<string | null> => {
+  try {
+    return await SecureStore.getItemAsync('auth_token', {
+      requireAuthentication: true,
+      authenticationPrompt: 'Authenticate to access your account',
+    });
+  } catch (error) {
+    console.error('Failed to retrieve token:', error);
+    return null;
+  }
+};
+```
+
+### Additional Security
+- **Sanitize user inputs** to prevent XSS attacks
+- **Ensure secure communication** with APIs using HTTPS and proper authentication
+- **Follow privacy regulations** (GDPR, CCPA)
+- **Implement data minimization** principles
+- **Provide user consent** for data collection
+
+## Accessibility
+
+### Accessibility Standards
+- **Support screen readers** and implement proper focus management
+- **Use semantic markup and labels**
+- **Test with accessibility tools**
+- **Ensure text scaling** and font adjustments for accessibility
+- **Support multiple languages** and RTL layouts
+
+### Accessibility Examples
+```typescript
+// ✅ GOOD: Accessibility implementation
+<TouchableOpacity
+  accessible={true}
+  accessibilityLabel="Start recording consultation"
+  accessibilityHint="Double tap to begin recording audio"
+  accessibilityRole="button"
+  accessibilityState={{ disabled: isRecording }}
+>
+  <Text>Start Recording</Text>
+</TouchableOpacity>
+```
+
+## Environment & Configuration
+
+### Environment Variables (CRITICAL)
+- **Use .env files** for environment-specific configuration
+- **Never commit sensitive data** to version control
+- **Use EAS secrets** for production environment variables
+- **Validate environment configuration** at startup
+
+### Environment Examples
+```typescript
+// ✅ GOOD: Environment configuration
+import Constants from 'expo-constants';
+
+const isDevelopment = Constants.expoConfig?.extra?.environment === 'development';
+const isStaging = Constants.expoConfig?.extra?.environment === 'staging';
+const isProduction = Constants.expoConfig?.extra?.environment === 'production';
+
+const apiUrl = isProduction
+  ? 'https://api.careway.com'
+  : 'https://staging-api.careway.com';
+
+// ✅ GOOD: Type-safe environment config
+export interface EnvironmentConfig {
+  baseApiUrl: string;
+  symmetricKey: string;
+  environment: 'development' | 'staging' | 'production';
+  enableLogging: boolean;
+  enableAnalytics: boolean;
+}
+
+export const getEnvironmentConfig = (): EnvironmentConfig => {
+  return {
+    baseApiUrl: process.env.EXPO_PUBLIC_BASE_API_URL!,
+    symmetricKey: process.env.EXPO_PUBLIC_SYMMETRIC_KEY!,
+    environment: process.env.EXPO_PUBLIC_ENVIRONMENT as EnvironmentConfig['environment'],
+    enableLogging: process.env.EXPO_PUBLIC_ENABLE_LOGGING === 'true',
+    enableAnalytics: process.env.EXPO_PUBLIC_ENABLE_ANALYTICS === 'true',
+  };
+};
+```
+
+## Build & Deployment
+
+### EAS Build (RECOMMENDED)
+- **Use EAS Build** for creating native builds
+- **Configure build profiles** for different environments
+- **Set up build triggers** for automated builds
+- **Monitor build status** and logs
+
+### EAS Submit
+- **Use EAS Submit** for app store deployment
+- **Configure submission profiles** for different stores
+- **Automate submission** with CI/CD
+- **Handle store-specific requirements**
+
+### Build Configuration
+```json
+{
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "ENVIRONMENT": "development"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "ENVIRONMENT": "staging"
+      }
+    },
+    "production": {
+      "env": {
+        "ENVIRONMENT": "production"
+      }
+    }
+  }
+}
+```
+
+## Testing
+
+### Testing Strategy
+- **Write unit tests** using Jest and React Native Testing Library
+- **Implement integration tests** for critical user flows using Detox
+- **Use Expo's testing tools** for running tests in different environments
+- **Consider snapshot testing** for components to ensure UI consistency
+- **Test on physical devices** when possible
+- **Use platform-specific test suites** (iOS Simulator, Android Emulator)
+- **Test edge cases** specific to mobile platforms
+- **Validate performance** on lower-end devices
+- **Test native module integration** and cross-platform consistency
+- **Use Maestro** for end-to-end testing
+
+## Debugging & Development
+
+### Development Tools
+- **Use Expo Dev Tools** for debugging
+- **Monitor network requests** and responses
+- **Debug native modules** effectively
+- **Use Expo Go** for rapid prototyping
+
+### Debugging Examples
+```typescript
+// ✅ GOOD: Development debugging
+import { LogBox } from 'react-native';
+
+if (__DEV__) {
+  LogBox.ignoreLogs([
+    'Warning: ...',
+    'Non-serializable values were found in the navigation state',
+  ]);
+}
+
+if (__DEV__) {
+  console.log('Development mode - detailed logging enabled');
+}
+```
+
+## Internationalization (i18n)
+
+### i18n Implementation
+- **Use react-native-i18n or expo-localization** for internationalization
+- **Support multiple languages** and RTL layouts
+- **Ensure text scaling** and font adjustments for accessibility
+
+## Asset Optimization
+
+### Image & Asset Optimization
+- **Optimize images and assets** for mobile
+- **Use appropriate image formats** (WebP for Android, HEIC for iOS)
+- **Implement lazy loading** for large assets
+- **Cache assets** appropriately
+
+### Metro Configuration
+```javascript
+// ✅ GOOD: Metro configuration for optimization
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+config.transformer.minifierConfig = {
+  keep_fnames: true,
+  mangle: {
+    keep_fnames: true,
+  },
+};
+
+module.exports = config;
+```
+
+## Version Management
+
+### Version Control
+- **Use semantic versioning** for app versions
+- **Automate version bumping** in CI/CD
+- **Track release notes** and changelogs
+- **Manage release branches** properly
+
+### Release Process
+```bash
+# ✅ GOOD: Release process
+npm version patch
+eas build --profile production --platform all
+eas submit --platform all --profile production
+git tag v1.2.3
+git push origin v1.2.3
+```
+
+## App Store Guidelines
+
+### Compliance (CRITICAL)
+- **Follow App Store guidelines** strictly
+- **Test app store builds** thoroughly
+- **Handle app review feedback**
+- **Monitor app store metrics**
+- **Follow Google Play policies** strictly
+- **Handle policy violations** promptly
+
+## Key Conventions
+
+1. **Rely on Expo's managed workflow** for streamlined development and deployment
+2. **Prioritize Mobile Web Vitals** (Load Time, Jank, and Responsiveness)
+3. **Use expo-constants** for managing environment variables and configuration
+4. **Use expo-permissions** to handle device permissions gracefully
+5. **Implement expo-updates** for over-the-air (OTA) updates
+6. **Follow Expo's best practices** for app deployment and publishing
+7. **Ensure compatibility** with iOS and Android by testing extensively on both platforms
+
+## Remember
+
+- **Expo is a powerful platform** - use it effectively!
+- **Use official Expo modules** when available
+- **Follow Expo SDK versioning** guidelines
+- **Test on real devices** when possible
+- **Optimize for mobile performance**
+- **Follow platform-specific** best practices
+- **Implement proper security** measures
+- **Use EAS for builds** and deployment
+- **Prioritize accessibility** and user experience
+- **Handle mobile-specific** considerations and edge cases
+

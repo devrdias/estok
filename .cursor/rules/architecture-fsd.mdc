@@ -1,0 +1,311 @@
+---
+alwaysApply: true
+---
+
+# Feature-Sliced Design (FSD) Architecture Rules
+
+## Core FSD Principles
+
+### Layer Dependency Order (CRITICAL)
+- **Strict hierarchy**: `app/ → screens/ → widgets/ → features/ → entities/ → shared/`
+- **NEVER import from higher layers** - only import from lower layers
+- **Examples**:
+  - ✅ GOOD: `features/auth/` imports from `@/shared/api` or `@/entities/user`
+  - ❌ BAD: `entities/user/` imports from `@/features/auth`
+
+### Layer Purposes & Responsibilities
+
+#### `app/` - Application Root
+- Global providers, routing configuration, app initialization
+- **NEVER imports from other layers**
+- Contains: `providers/`, `router/`, `store/`, `config/`
+
+#### `screens/` - Routing & Layouts (FSD "pages" layer)
+- Screen components, layouts, navigation
+- **Can import from**: `shared/`, `entities/`, `features/`, `widgets/`
+- Contains: `ui/`, `model/` (screen-specific state)
+
+#### `widgets/` - Composite UI
+- Business-logic-free composite components
+- **Can import from**: `shared/`, `entities/`, `features/`
+- Contains: `ui/`, `model/` (widget-specific state)
+
+#### `features/` - User Interactions
+- User actions, business workflows, feature-specific logic
+- **Can import from**: `shared/`, `entities/`
+- **Cannot import from**: other `features/`
+- Contains: `ui/`, `model/`, `api/`, `lib/`
+
+#### `entities/` - Domain Models
+- Business logic, domain models, reusable business components
+- **Can import from**: `shared/` only
+- Contains: `model/`, `api/`, `lib/`, `ui/` (domain-specific)
+
+#### `shared/` - Infrastructure
+- Utilities, UI components, API clients, common types
+- **Cannot import from any other layer**
+- Contains: `ui/`, `lib/`, `api/`, `config/`, `types/`
+
+## Project Structure Rules
+
+### Directory Structure
+```
+src/
+├── app/           # App root, providers, routing
+├── screens/       # Screen components, layouts
+├── widgets/       # Composite UI components
+├── features/      # Feature-specific logic
+├── entities/      # Domain models, business logic
+└── shared/        # Common utilities, UI, API
+```
+
+### Slice Structure
+Each slice may contain:
+- `ui/` - UI components and related files
+- `model/` - State management, business logic
+- `api/` - API calls and data fetching
+- `lib/` - Utilities and helpers
+- `config/` - Configuration files
+- `types/` - TypeScript type definitions
+
+## Import/Export Rules
+
+### Import Order (MANDATORY)
+```typescript
+// 1. External libraries
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
+
+// 2. Internal shared modules
+import { Button } from '@/shared/ui';
+import { apiClient } from '@/shared/api';
+
+// 3. Entities
+import { User } from '@/entities/user';
+
+// 4. Features (if needed)
+import { useAuth } from '@/features/auth';
+
+// 5. Relative imports
+import { ComponentProps } from './types';
+```
+
+### Export Conventions
+- **Use named exports** for better tree-shaking
+- **Export from index files** for public APIs
+- **Avoid deep imports** - use public API only
+
+### Cross-Layer Import Rules
+- ❌ **NEVER**: `entities/` → `features/`
+- ❌ **NEVER**: `shared/` → any other layer
+- ❌ **NEVER**: `features/` → `features/`
+- ✅ **ALLOWED**: Any layer → `shared/`
+- ✅ **ALLOWED**: `features/` → `entities/`
+
+## File Naming Conventions
+
+### File Names
+- **UI Components**: `PascalCase` (e.g., `UserProfile.tsx`, `HomePage.tsx`, `StackNavigator.tsx`)
+- **Hooks**: `kebab-case` with `use` prefix (e.g., `use-user-profile.ts`)
+- **Utilities**: `kebab-case` (e.g., `format-date.ts`)
+- **Types**: `kebab-case` (e.g., `user-profile.types.ts`)
+- **Non-component files**: `kebab-case` (e.g., `logout-listener.ts`, `routes.ts`)
+- **Index files**: `index.ts` or `index.tsx` (always lowercase)
+
+### Directories
+- **All directories**: `kebab-case` (e.g., `user-profile/`, `home/`, `routing/`)
+- **Slice directories**: `kebab-case` (e.g., `ui/`, `model/`, `api/`)
+
+## API Architecture Rules
+
+### HTTP Client Structure
+- **Clients**: `shared/api/client/`
+- **Endpoints**: `shared/api/endpoints/` or `features/{feature}/api/`
+- **Types**: Co-locate with API functions
+
+### API Function Patterns
+```typescript
+// ✅ GOOD: Descriptive function names
+export const getUserProfile = async (userId: string): Promise<UserProfile> => {
+  // Implementation
+};
+
+// ✅ GOOD: Consistent error handling
+export const createUser = async (userData: CreateUserRequest): Promise<User> => {
+  try {
+    const response = await apiClient.post('/users', userData);
+    return response.data;
+  } catch (error) {
+    loggerService.error('Failed to create user', error);
+    throw new ApiError('User creation failed', error);
+  }
+};
+```
+
+## Component & State Management Rules
+
+### Component Organization
+- **Reusable components**: `shared/ui/`
+- **Feature-specific components**: `features/{feature}/ui/`
+- **Domain components**: `entities/{entity}/ui/`
+
+### State Management
+- **Local state**: React hooks (`useState`, `useReducer`)
+- **Server state**: React Query/TanStack Query
+- **Global UI state**: React Context
+- **Complex state**: Zustand or Redux Toolkit
+
+### Component Patterns
+```typescript
+// ✅ GOOD: Single responsibility
+export const UserProfile = ({ userId }: UserProfileProps) => {
+  const { data: user, isLoading } = useUserProfile(userId);
+
+  if (isLoading) return <UserProfileSkeleton />;
+  if (!user) return <UserNotFound />;
+
+  return <UserProfileContent user={user} />;
+};
+
+// ✅ GOOD: Proper separation of concerns
+const UserProfileContent = ({ user }: { user: User }) => {
+  // UI logic only
+  return (
+    <div>
+      <UserAvatar user={user} />
+      <UserDetails user={user} />
+    </div>
+  );
+};
+```
+
+## Error Handling Rules
+
+### Error Types
+- **Create specific error types** for different scenarios
+- **Use discriminated unions** for error handling
+- **Provide meaningful error messages** and recovery options
+
+### Error Boundaries
+- **Use error boundaries** at appropriate levels
+- **Handle errors gracefully** with fallback UI
+- **Log errors** for debugging and monitoring
+
+### Error Handling Patterns
+```typescript
+// ✅ GOOD: Specific error types
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public statusCode: number,
+    public details?: unknown
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+// ✅ GOOD: Discriminated unions
+type LoadingState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'success'; data: User }
+  | { status: 'error'; error: ApiError };
+```
+
+## Performance Rules
+
+### Code Splitting
+- **Use dynamic imports** for route-based splitting
+- **Lazy load** heavy components
+- **Optimize bundle size** with proper imports
+
+### React Optimization
+- **Use React.memo** for expensive components
+- **Use useMemo/useCallback** for expensive calculations
+- **Profile and optimize** re-renders
+
+### Performance Patterns
+```typescript
+// ✅ GOOD: Memoized expensive component
+export const ExpensiveComponent = React.memo(({ data }: Props) => {
+  const processedData = useMemo(() =>
+    expensiveCalculation(data), [data]
+  );
+
+  return <div>{processedData}</div>;
+});
+
+// ✅ GOOD: Lazy loading
+const LazyComponent = lazy(() => import('./LazyComponent'));
+```
+
+## Testing Rules
+
+### Test Organization
+- **Co-locate tests** with source code
+- **Use consistent naming**: `Component.test.tsx`
+- **Test business logic separately** from UI
+
+### Test Patterns
+```typescript
+// ✅ GOOD: Component testing
+describe('UserProfile', () => {
+  it('should render user information', () => {
+    render(<UserProfile userId="123" />);
+    expect(screen.getByText('John Doe')).toBeInTheDocument();
+  });
+});
+
+// ✅ GOOD: Business logic testing
+describe('userService', () => {
+  it('should format user name correctly', () => {
+    expect(formatUserName('john', 'doe')).toBe('John Doe');
+  });
+});
+```
+
+## Code Quality Rules
+
+### Single Responsibility
+- **Each file/function/component** should have one responsibility
+- **Separate business logic** from UI
+- **Separate data fetching** from presentation
+
+### Code Organization
+- **Keep functions small** and focused
+- **Use meaningful names** for variables and functions
+- **Add JSDoc comments** for complex logic
+
+### Documentation
+- **Document public APIs** with JSDoc
+- **Add README files** for complex features
+- **Keep documentation up to date** with code changes
+
+## Enforcement Rules
+
+### Critical Violations (ERROR)
+- Cross-layer imports (higher → lower)
+- Circular dependencies
+- Missing public API exports
+- Deep imports from non-index files
+
+### Warnings (WARNING)
+- Deep nesting in directory structure
+- Missing documentation for complex features
+- Inconsistent naming conventions
+
+### Info (INFO)
+- Best practices for layer usage
+- Performance optimization opportunities
+- Testing recommendations
+
+## Remember
+
+- **Architecture is not optional** - follow FSD principles
+- **Keep code organized** and maintainable
+- **Test architecture decisions** with real-world scenarios
+- **Refactor when needed** to maintain clean architecture
+- **Document complex decisions** for future developers
+
+

@@ -1,0 +1,17 @@
+# CodeWiki / local tooling
+.codewiki-cache/
+.venv-codewiki/
+
+node_modules/
+.history
+
+# macOS
+.DS_Store
+
+# IDE / editor (optional; uncomment to ignore)
+# .cursor/
+
+# Local env
+.env
+.env.*
+!.env.example

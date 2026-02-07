@@ -1,0 +1,333 @@
+---
+alwaysApply: true
+---
+
+# Testing Rules
+
+## MANDATORY: Test-Driven Development (TDD)
+
+New features should follow Test-Driven Development (TDD) practices when possible. The testing framework is available to support this approach.
+
+## MANDATORY: Integration Tests for New Features
+
+Every new feature MUST include integration tests that validate ACTUAL platform behavior. Integration tests are not optional. They are required because they:
+
+- Reveal undocumented platform limitations (e.g., iOS minimum buffer sizes)
+- Validate actual behavior, not mocked behavior
+- Ensure cross-platform consistency
+- Serve as living documentation of platform quirks
+
+Example discovery from integration testing:
+
+```typescript
+// Integration test revealed iOS AVAudioEngine enforces minimum 4800 frames
+// This critical limitation would have been missed by unit tests
+// The library now handles this transparently with buffer accumulation
+```
+
+## TDD Workflow for New Features
+
+1. **Architecture First**
+   - Define the feature's API and interfaces before implementation
+   - Create a design document outlining the approach
+   - Consider cross-platform consistency from the start
+
+2. **Write Tests Before Code (When Feasible)**
+   - Create comprehensive test cases that define expected behavior
+   - Include unit tests, integration tests, and platform-specific tests
+   - Tests should fail initially (Red phase)
+
+3. **Implementation Order**
+   - TypeScript interfaces/types first
+   - iOS implementation + tests passing
+   - Android implementation + tests passing
+   - Web implementation (if applicable) + tests passing
+   - Cross-platform integration tests
+   - Update playground app to demonstrate the feature
+
+4. **Test Categories**
+   - Unit Tests: Pure logic, no platform dependencies
+   - Platform Tests: iOS/Android specific implementations
+   - Integration Tests: End-to-end feature validation
+   - Consistency Tests: Ensure identical behavior across platforms
+
+Example TDD Flow:
+
+```typescript
+// 1. FIRST: Define the interface
+interface AudioFeature {
+  process(data: Float32Array): FeatureResult;
+}
+
+// 2. SECOND: Write failing tests
+describe('AudioFeature', () => {
+  it('should process audio data correctly', () => {
+    const feature = new AudioFeature();
+    const result = feature.process(testData);
+    expect(result.value).toBe(expectedValue);
+  });
+});
+
+// 3. THIRD: Implement for each platform
+// - iOS: Swift implementation
+// - Android: Kotlin implementation
+// - Web: TypeScript implementation
+
+// 4. FOURTH: Validate cross-platform consistency
+it('should produce identical results on all platforms', () => {
+  expect(iosResult).toEqual(androidResult);
+  expect(androidResult).toEqual(webResult);
+});
+```
+
+## Test Requirements
+
+### Coverage Targets
+
+- Target 80% code coverage for new features
+- Aim for 100% coverage for critical paths and public APIs
+- All edge cases and error scenarios should be tested
+- Performance benchmarks for computationally intensive features
+
+### Test Structure
+
+```typescript
+// ✅ Good: Proper test structure
+describe('ConsultationService', () => {
+  describe('createConsultation', () => {
+    it('should create a consultation with valid data', async () => {
+      // Arrange
+      const consultationData = {
+        title: 'Test Consultation',
+        description: 'Test Description'
+      };
+
+      // Act
+      const result = await consultationService.create(consultationData);
+
+      // Assert
+      expect(result).toBeDefined();
+      expect(result.title).toBe(consultationData.title);
+    });
+
+    it('should throw error with invalid data', async () => {
+      // Arrange
+      const invalidData = { title: '' };
+
+      // Act & Assert
+      await expect(consultationService.create(invalidData))
+        .rejects.toThrow('Title is required');
+    });
+  });
+});
+```
+
+## Testing Best Practices
+
+### Test Naming
+
+- Use descriptive test names that explain the scenario
+- Follow the pattern: "should [expected behavior] when [condition]"
+- Group related tests in describe blocks
+- Use consistent naming conventions
+
+```typescript
+// ✅ Good: Descriptive test names
+it('should return user data when valid ID is provided', () => {});
+it('should throw error when user ID is invalid', () => {});
+it('should return null when user is not found', () => {});
+
+// ❌ Bad: Unclear test names
+it('works', () => {});
+it('test1', () => {});
+it('should work', () => {});
+```
+
+### Test Organization
+
+- Arrange-Act-Assert pattern for test structure
+- Setup and teardown for test data
+- Mock external dependencies appropriately
+- Use test factories for creating test data
+
+```typescript
+// ✅ Good: AAA pattern with proper setup
+describe('UserService', () => {
+  let userService: UserService;
+  let mockApi: jest.Mocked<UserApi>;
+
+  beforeEach(() => {
+    mockApi = createMockUserApi();
+    userService = new UserService(mockApi);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should fetch user by ID', async () => {
+    // Arrange
+    const userId = '123';
+    const expectedUser = createMockUser({ id: userId });
+    mockApi.getUser.mockResolvedValue(expectedUser);
+
+    // Act
+    const result = await userService.getUser(userId);
+
+    // Assert
+    expect(result).toEqual(expectedUser);
+    expect(mockApi.getUser).toHaveBeenCalledWith(userId);
+  });
+});
+```
+
+### Mocking Guidelines
+
+- Mock at the right level (API calls, not business logic)
+- Use realistic mock data that matches real scenarios
+- Verify mock interactions when testing behavior
+- Reset mocks between tests to avoid interference
+
+```typescript
+// ✅ Good: Proper mocking
+const mockApi = {
+  getConsultations: jest.fn(),
+  createConsultation: jest.fn(),
+  updateConsultation: jest.fn(),
+} as jest.Mocked<ConsultationApi>;
+
+// Mock implementation
+mockApi.getConsultations.mockResolvedValue([
+  createMockConsultation({ id: '1', title: 'Test 1' }),
+  createMockConsultation({ id: '2', title: 'Test 2' }),
+]);
+
+// Verify calls
+expect(mockApi.getConsultations).toHaveBeenCalledTimes(1);
+expect(mockApi.getConsultations).toHaveBeenCalledWith();
+```
+
+## Platform-Specific Testing
+
+### iOS Testing
+
+- Use iOS Simulator for testing iOS-specific behavior
+- Test device-specific features (haptics, audio, camera)
+- Validate iOS UI patterns and interactions
+- Test iOS-specific error handling
+
+### Android Testing
+
+- Use Android Emulator for testing Android behavior
+- Test Android-specific features and permissions
+- Validate Android UI patterns and navigation
+- Test Android-specific error scenarios
+
+### Web Testing
+
+- Use browser testing for web-specific features
+- Test responsive design across different screen sizes
+- Validate web accessibility standards
+- Test cross-browser compatibility
+
+## Integration Testing
+
+### End-to-End Testing
+
+- Use Maestro for mobile app testing
+- Test complete user workflows from start to finish
+- Validate cross-screen navigation and state management
+- Test real device interactions (touch, gestures, etc.)
+
+### API Integration Testing
+
+- Test actual API endpoints (not mocked)
+- Validate request/response formats and error handling
+- Test authentication flows and token management
+- Validate data consistency across different endpoints
+
+## Performance Testing
+
+### Benchmark Testing
+
+- Measure execution times for critical operations
+- Test memory usage and potential leaks
+- Validate performance on lower-end devices
+- Set performance budgets for key operations
+
+```typescript
+// ✅ Good: Performance testing
+describe('AudioProcessing', () => {
+  it('should process audio within performance budget', () => {
+    const startTime = performance.now();
+
+    // Act
+    const result = audioProcessor.process(largeAudioData);
+
+    const endTime = performance.now();
+    const processingTime = endTime - startTime;
+
+    // Assert
+    expect(processingTime).toBeLessThan(100); // 100ms budget
+    expect(result).toBeDefined();
+  });
+});
+```
+
+## Error Testing
+
+### Error Scenarios
+
+- Test all error paths and edge cases
+- Validate error messages and user feedback
+- Test error recovery and fallback behavior
+- Ensure errors are logged appropriately
+
+```typescript
+// ✅ Good: Comprehensive error testing
+describe('Error Handling', () => {
+  it('should handle network errors gracefully', async () => {
+    // Arrange
+    mockApi.getUser.mockRejectedValue(new NetworkError('Connection failed'));
+
+    // Act & Assert
+    await expect(userService.getUser('123'))
+      .rejects.toThrow(NetworkError);
+  });
+
+  it('should handle validation errors with field details', async () => {
+    // Arrange
+    const invalidData = { email: 'invalid-email' };
+
+    // Act & Assert
+    await expect(userService.createUser(invalidData))
+      .rejects.toThrow('Invalid email format');
+  });
+});
+```
+
+## Test Maintenance
+
+### Keep Tests Updated
+
+- Update tests when code changes (refactoring, new features)
+- Remove obsolete tests that no longer apply
+- Refactor tests when they become hard to maintain
+- Document test setup and requirements
+
+### Test Data Management
+
+- Use test factories for creating consistent test data
+- Centralize test utilities and helpers
+- Maintain test database schemas and fixtures
+- Version control test data along with code
+
+## Remember
+
+**Testing is not optional - it's part of the development process!**
+
+- Write tests before or alongside code
+- Aim for comprehensive coverage
+- Test both happy path and error scenarios
+- Validate cross-platform consistency
+- Use integration tests to discover real platform behavior

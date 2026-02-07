@@ -1,0 +1,177 @@
+---
+alwaysApply: true
+---
+
+# Core Development Rules
+
+## Core Development Principles
+
+### SOLID Principles
+
+#### Single Responsibility Principle (SRP)
+- Each class, function, or module should have only one well-defined responsibility
+- Separate concerns into distinct, focused components
+- Avoid classes that handle multiple unrelated tasks
+- Example: Separate authentication logic from notification sending into different classes
+
+#### Open/Closed Principle (OCP)
+- Design code that is open for extension but closed for modification
+- Use inheritance, polymorphism, and inversion of control for extensibility
+- Add new features by extending existing code rather than modifying it
+- Example: Use abstract base classes for payment methods that can be extended for specific implementations
+
+#### Liskov Substitution Principle (LSP)
+- Subclasses must be substitutable for their base classes without breaking functionality
+- Maintain contracts when inheriting classes
+- Ensure derived classes don't alter expected behavior
+- Example: Any subclass of "Shape" should work wherever "Shape" is expected
+
+#### Interface Segregation Principle (ISP)
+- Create specific interfaces for clients rather than monolithic ones
+- Clients should not be forced to implement unused methods
+- Design focused, cohesive interfaces
+- Example: Separate interfaces for online vs offline payment methods
+
+#### Dependency Inversion Principle (DIP)
+- Depend on abstractions, not concrete implementations
+- High-level modules should not depend on low-level modules
+- Use dependency injection and interfaces for loose coupling
+- Example: Depend on payment interface rather than specific payment processor
+
+### Additional Core Principles
+
+#### DRY (Don't Repeat Yourself)
+- Eliminate unnecessary code duplication
+- Extract common functionality into reusable functions, classes, or modules
+- Each piece of knowledge should have a single canonical representation
+- Use utility functions and shared components for repeated logic
+
+#### KISS (Keep It Simple, Stupid)
+- Prioritize simplicity over complexity
+- Avoid over-engineering and excessive abstractions
+- Use clear, explicit naming for variables, functions, and classes
+- Focus on solving specific problems without unnecessary features
+
+#### YAGNI (You Ain't Gonna Need It)
+- Don't implement features that aren't immediately necessary
+- Focus on essential features and current user needs
+- Avoid premature optimizations and hypothetical future requirements
+- Iterate based on real user feedback
+
+#### Convention over Configuration (CoC)
+- Follow established conventions to reduce configuration overhead
+- Use consistent naming patterns and project structure
+- Leverage framework defaults when appropriate
+- Maintain consistent file organization and naming
+
+#### Composition over Inheritance
+- Prefer object composition over class inheritance
+- Build complex objects by combining simpler components
+- Avoid deep inheritance hierarchies
+- Focus on relationships between objects rather than inheritance chains
+
+#### Law of Demeter (LoD)
+- Classes should only interact with their immediate collaborators
+- Avoid chaining method calls through multiple objects
+- Use encapsulation to hide internal implementation details
+- Minimize dependencies between unrelated classes
+
+## Technology-Specific Guidelines
+
+### TypeScript/React/React Native
+- Use TypeScript for type safety and better developer experience
+- Prefer functional components with hooks over class components
+- Use proper TypeScript interfaces and types
+- Implement proper error boundaries and loading states
+
+### Styled Components/Tailwind CSS
+- Use styled-components for component-specific styling
+- Leverage Tailwind CSS for utility-first styling approach
+- Maintain consistent design system and theme
+- Use CSS-in-JS patterns appropriately
+
+### Next.js
+- Follow Next.js conventions for file-based routing
+- Use appropriate data fetching methods (getServerSideProps, getStaticProps)
+- Implement proper SEO and performance optimizations
+- Follow Next.js best practices for API routes
+
+### Node.js/GraphQL
+- Use GraphQL for efficient data fetching
+- Implement proper error handling and validation
+- Follow RESTful principles for API design
+- Use proper authentication and authorization patterns
+
+### Python
+- Follow PEP 8 style guidelines
+- Use type hints for better code documentation
+- Implement proper exception handling
+- Follow Pythonic patterns and idioms
+
+## Code Quality Standards
+
+### Naming Conventions
+- Use descriptive, self-documenting names
+- Follow camelCase for variables and functions
+- Use PascalCase for classes and components
+- Use UPPER_CASE for constants
+- Use kebab-case for file names when appropriate
+
+### Function and Class Design
+- Keep functions small and focused (ideally under 20 lines)
+- Use pure functions when possible
+- Implement proper error handling
+- Add meaningful comments for complex logic
+- Use meaningful return types and parameters
+
+### File Organization
+- Group related functionality together
+- Use barrel exports (index.ts files) for clean imports
+- Separate concerns into appropriate directories
+- Follow the established project structure
+
+### Testing
+- Write unit tests for critical business logic
+- Use integration tests for API endpoints
+- Implement proper test coverage
+- Follow AAA pattern (Arrange, Act, Assert)
+
+### Performance
+- Optimize for performance without premature optimization
+- Use appropriate data structures and algorithms
+- Implement proper caching strategies
+- Monitor and profile performance bottlenecks
+
+### State Management
+- Use appropriate state management patterns
+- Avoid prop drilling with proper state lifting
+- Implement proper state normalization
+- Use context providers appropriately
+
+### Error Handling
+- Implement comprehensive error boundaries
+- Use proper error logging and monitoring
+- Provide meaningful error messages to users
+- Handle network errors gracefully
+
+### Security
+- Implement proper input validation
+- Use secure authentication patterns
+- Follow OWASP security guidelines
+- Handle sensitive data appropriately
+
+## Code Review Checklist
+
+- [ ] Follows SOLID principles
+- [ ] Implements DRY principle
+- [ ] Maintains KISS principle
+- [ ] Uses appropriate design patterns
+- [ ] Has proper error handling
+- [ ] Includes necessary tests
+- [ ] Follows naming conventions
+- [ ] Has appropriate documentation
+- [ ] Performs well
+- [ ] Is secure and follows best practices
+
+Remember: These principles are guidelines, not rigid rules. Use your judgment to apply them appropriately based on the specific context and requirements of your project.
+

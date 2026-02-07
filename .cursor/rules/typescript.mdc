@@ -1,0 +1,156 @@
+---
+alwaysApply: true
+---
+
+## Type System
+
+- **Prefer `interface` over `type`** for object shapes to allow for extension and merging.
+- **Avoid `enum`**; use `const` objects with `as const` for value sets.
+
+  ```typescript
+  // ❌ Avoid enums
+  enum DeviceType {
+    BUILTIN = 'builtin_mic',
+    BLUETOOTH = 'bluetooth'
+  }
+
+  // ✅ Prefer const objects with as const
+  const DeviceType = {
+    BUILTIN: 'builtin_mic',
+    BLUETOOTH: 'bluetooth'
+  } as const;
+
+  type DeviceTypeValue = typeof DeviceType[keyof typeof DeviceType];
+  ```
+
+- **Never use `any`**. Use `unknown` or `object` if you must.
+- **Enable strict type checking** (`strict: true` in `tsconfig.json`).
+- **Prefer object parameters** for functions with multiple arguments.
+- **Use generic constraints** where appropriate.
+- **Export types from their source files**; avoid index files that only re-export types.
+- **Use branded types** for domain-specific values.
+
+  ```typescript
+  // ✅ Branded types for domain safety
+  type UserId = string & { readonly __brand: 'UserId' };
+  type ConsultationId = string & { readonly __brand: 'ConsultationId' };
+
+  function getConsultation(id: ConsultationId) {
+    // Only accepts ConsultationId, not any string
+  }
+  ```
+
+## Code Organization
+
+- **Import directly from the source**; avoid unnecessary re-export files.
+- **Use named exports** for better tree-shaking.
+- **Group imports** in this order:
+  1. External libraries
+  2. Internal shared modules
+  3. Relative imports
+
+  ```typescript
+  // ✅ Logical import grouping
+  import { useQuery, useMutation } from '@tanstack/react-query';
+  import { queryOptions } from '@tanstack/react-query';
+
+  import { authClient } from '@/shared/api';
+  import { loggerService } from '@/shared/lib';
+
+  import { consultationApi } from './consultationApi';
+  import type { Consultation } from './consultationModels';
+  ```
+
+- **Prefer one main export per file.**
+- **Co-locate related types** with their implementations.
+- **Use barrel exports sparingly** and only when beneficial.
+
+## Error Handling
+
+- **Create specific error types** for different error scenarios.
+- **Use discriminated unions** for error handling.
+
+  ```typescript
+  // ✅ Discriminated union for errors
+  type ApiError =
+    | { type: 'NetworkError'; message: string; retryable: boolean }
+    | { type: 'ValidationError'; field: string; message: string }
+    | { type: 'AuthenticationError'; message: string };
+
+  function handleError(error: ApiError) {
+    switch (error.type) {
+      case 'NetworkError':
+        return error.retryable ? retry() : showError(error.message);
+      case 'ValidationError':
+        return highlightField(error.field);
+      case 'AuthenticationError':
+        return redirectToLogin();
+    }
+  }
+  ```
+
+- **Use optional chaining** (`?.`) and **nullish coalescing** (`??`).
+- **Use non-null assertions** (`!`) only when absolutely certain.
+- **Use type guards** for runtime type checking.
+
+## Performance
+
+- **Let TypeScript infer types** when possible.
+- **Use `const` assertions** for literal types.
+- **Avoid unnecessary type annotations**.
+
+  ```typescript
+  // ✅ Let TypeScript infer
+  const professions = ['MD', 'RN', 'PA'] as const;
+  const user = { id: '123', name: 'John' };
+
+  // ❌ Unnecessary type annotations
+  const professions: string[] = ['MD', 'RN', 'PA'];
+  const user: { id: string; name: string } = { id: '123', name: 'John' };
+  ```
+
+- **Use minimal constraints on generics.**
+- **Prefer composition over inheritance** for complex types.
+- **Use utility types** (`Partial<T>`, `Pick<T, K>`, `Omit<T, K>`) as needed.
+
+## Code Quality
+
+- **Use PascalCase** for types, interfaces, and classes.
+- **Use camelCase** for variables, functions, and methods.
+- **Use UPPER_SNAKE_CASE** for constants.
+- **Use descriptive names** that explain intent.
+
+## Documentation
+
+- **Document all public APIs with JSDoc.**
+- **Include examples** in type documentation.
+- **Document complex generic types thoroughly.**
+
+  ```typescript
+  /**
+   * Creates a query configuration for React Query.
+   * @template T - The data type returned by the query
+   * @template E - The error type (defaults to Error)
+   * @param queryKey - The unique key for this query
+   * @param queryFn - The function that fetches the data
+   * @returns QueryOptions configuration object
+   * @example
+   * ```typescript
+   * const userQuery = createQueryOptions(
+   *   ['user', userId],
+   *   () => fetchUser(userId)
+   * );
+   * ```
+   */
+  function createQueryOptions<T, E = Error>(
+    queryKey: readonly unknown[],
+    queryFn: () => Promise<T>
+  ): QueryOptions<T, E> {
+    // Implementation...
+  }
+  ```
+
+- **Apply platform abstraction** for cross-platform code.
+- **Create consistent APIs** across different implementations.
+- **Use clear error typing** for better error handling.
+

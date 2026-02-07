@@ -1,0 +1,62 @@
+---
+description: Task management workflow using tasks/todo.md and tasks/lessons.md for tracking progress and capturing learnings.
+alwaysApply: true
+---
+
+# Task Management
+
+## Planning Workflow
+
+1. **Plan First**: Write plan to `tasks/todo.md` with checkable items
+2. **Verify Plan**: Check in before starting implementation
+3. **Track Progress**: Mark items complete as you go
+4. **Explain Changes**: High-level summary at each step
+5. **Document Results**: Add review section to `tasks/todo.md`
+6. **Capture Lessons**: Update `tasks/lessons.md` after corrections
+
+## File Structure
+
+Maintain these files in the project root:
+
+```
+tasks/
+├── todo.md       # Current task plan with checkboxes
+└── lessons.md    # Patterns learned from corrections
+```
+
+## todo.md Format
+
+```markdown
+# Current Task: [Task Name]
+
+## Plan
+- [ ] Step 1: Description
+- [ ] Step 2: Description
+- [ ] Step 3: Description
+
+## Progress Notes
+- [timestamp] Completed step 1, found issue X
+- [timestamp] Step 2 required adjustment because Y
+
+## Review
+- What worked well
+- What could be improved
+```
+
+## lessons.md Format
+
+```markdown
+# Lessons Learned
+
+## [Date] - [Category]
+**Mistake**: What went wrong
+**Pattern**: The underlying pattern to avoid
+**Rule**: Concrete rule to prevent recurrence
+
+---
+```
+
+## When to Update
+
+- **todo.md**: At task start, during progress, at completion
+- **lessons.md**: After ANY user correction or discovered mistake

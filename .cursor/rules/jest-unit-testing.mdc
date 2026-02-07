@@ -1,0 +1,9 @@
+---
+alwaysApply: true
+---
+
+This rule aims to improve the quality and consistency of unit tests by suggesting best practices for mocking in Jest:
+- Prefer setting up mocks globally rather than mocking in each test or file individually.
+- Encourage reusability and maintainability of mocks by centralizing their configuration.
+- Reduce repeated mock setups and promote cleaner test files.
+- Additional best practices for clear and reliable unit testing can be included as needed.

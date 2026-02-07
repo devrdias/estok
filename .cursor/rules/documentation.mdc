@@ -1,0 +1,81 @@
+---
+alwaysApply: true
+---
+
+# Documentation Rules
+
+## Cursor Documentation Policy
+
+**Rule:** Update all relevant documentation with every code change—unless there is genuinely nothing meaningful to document. Documentation should be clear, accurate, and as concise as possible to avoid unnecessary clutter.
+
+Required documentation updates include the following:
+
+- **Code documentation:** Maintain or add JSDoc comments, inline comments, and TypeScript typings as needed.
+    - Only add explanatory comments where logic is not immediately obvious—prefer self-explanatory code. Use comments to explain intent or rationale, *not* to restate what the code does.
+- **README.md:** Revise if you introduce new features, change APIs, or update how the software is used.
+- **API documentation:** Update or add docs if you modify or add API endpoints, types, or services.
+- **Architecture documentation:** Adjust when making changes to project structure, key architectural patterns, or how folders and files are organized.
+- **Usage examples:** Include usage examples only when they provide meaningful clarity or demonstrate important functionality.
+- **Copilot or automation instructions:** Revise as needed whenever related guidance or prompts change.
+
+**Summary:**
+If you touch code, touch the docs. Never leave documentation out of date with reality, but also don't write docs for things that are obvious in context.
+
+## Enforcement Checklist
+
+Before completing any task, verify:
+
+- [ ] JSDoc added/updated for new functions, classes, interfaces -
+- [ ] README.md or other docs updated as needed
+- [ ] TypeScript types are defined and exported
+- [ ] Usage examples are provided for new functionality
+- [ ] Architecture documentation is updated if structure or patterns change
+
+## Code Documentation Standards
+
+- Every public function, class, interface, and type must have JSDoc documentation.
+- All TypeScript types and interfaces must be documented.
+- Usage examples must be included in JSDoc for public functions and components.
+
+## README Documentation Standards
+
+- When adding new API endpoints, update the API Endpoints section in README.md.
+- When adding new features, document them in the Features section of README.md.
+
+## Architecture Documentation
+
+- When changing project structure, update the Project Structure section in README.md and/or docs/architecture.md.
+
+## Usage Examples
+
+- Always include usage examples in JSDoc for new functions and components.
+
+## Failure Consequences
+
+If documentation is not updated:
+
+1. Task is incomplete and cannot be marked as done.
+2. Must go back and add documentation before proceeding.
+3. Code review will fail; documentation is required for approval.
+
+## Documentation File Locations
+
+- Code documentation: JSDoc inline, type definitions in the same file, API docs in README.md or dedicated files.
+- Project documentation: README.md, docs/, OpenAPI/Swagger files.
+- Architecture documentation: README.md, docs/architecture.md, docs/api-patterns.md.
+
+## Quick Reference Checklist (before commit)
+
+- [ ] All public functions have JSDoc
+- [ ] All types/interfaces are documented
+- [ ] README.md is updated if needed
+- [ ] Usage examples are provided
+- [ ] Architecture changes are documented
+
+## Documentation Checklist
+
+- [ ] What: What does this code do?
+- [ ] How: How do you use it?
+- [ ] Why: Why was this approach chosen?
+- [ ] Examples: Are there usage examples?
+- [ ] Types: Are all types properly documented?

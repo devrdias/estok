@@ -1,0 +1,28 @@
+---
+alwaysApply: true
+---
+
+rule:
+  id: questrade-libs
+  description: >
+    Require developers to first look for reusable components in
+    '@questrade/allspark-mobile' and '@questrade/utils-mobile' libraries before
+    using raw 'react-native' components or utilities.
+  alwaysApply: true
+
+enforceLibraryUsageFirst:
+  libraries:
+    - "@questrade/allspark-mobile"
+    - "@questrade/utils-mobile"
+  message: >
+    Prefer reusable components and utilities from '@questrade/allspark-mobile' or
+    '@questrade/utils-mobile'. Only use 'react-native' raw components if no
+    suitable option exists in these libraries.
+
+imports:
+  - package: "@questrade/allspark-mobile"
+    mode: always
+    hint: "Before importing from 'react-native', check for reusable components in '@questrade/allspark-mobile'."
+  - package: "@questrade/utils-mobile"
+    mode: always
+    hint: "Before using utilities from 'react-native', check for them in '@questrade/utils-mobile'."
