@@ -11,7 +11,8 @@ import * as SecureStore from 'expo-secure-store';
 import { useAuthRequest } from 'expo-auth-session/providers/google';
 import { fetchUserInfoAsync } from 'expo-auth-session';
 import { discovery } from 'expo-auth-session/providers/google';
-import type { AuthUser } from './types';
+import { UserRole } from './types';
+import type { AuthUser, UserRoleValue } from './types';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -20,22 +21,40 @@ const AUTH_STORAGE_KEY = 'auth_user';
 interface AuthContextValue {
   user: AuthUser | null;
   isLoading: boolean;
-  login: () => Promise<void>;
+  /** Login with a specific mock user (mock mode) or trigger Google OAuth. */
+  login: (mockUserId?: string) => Promise<void>;
   logout: () => Promise<void>;
+  /** Available mock users for the login screen picker. Only populated in mock mode. */
+  mockUsers: readonly AuthUser[];
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const MOCK_USER: AuthUser = {
-  id: 'mock-user-1',
-  email: 'usuario@exemplo.com',
-  name: 'Usuário Mock',
-  photoUrl: null,
-};
+/** Pre-defined mock users for development without a backend. */
+const MOCK_USERS: readonly AuthUser[] = [
+  {
+    id: 'mock-manager-1',
+    email: 'gerente@estok.com',
+    name: 'Claudio',
+    photoUrl: null,
+    role: UserRole.MANAGER,
+  },
+  {
+    id: 'mock-employee-1',
+    email: 'funcionario@estok.com',
+    name: 'Rafael',
+    photoUrl: null,
+    role: UserRole.EMPLOYEE,
+  },
+] as const;
 
-async function mockLogin(): Promise<AuthUser> {
+async function mockLogin(userId?: string): Promise<AuthUser> {
   await new Promise((r) => setTimeout(r, 400));
-  return MOCK_USER;
+  if (userId) {
+    const found = MOCK_USERS.find((u) => u.id === userId);
+    if (found) return found;
+  }
+  return MOCK_USERS[0];
 }
 
 function mapGoogleUserInfo(info: Record<string, unknown>): AuthUser {
@@ -44,6 +63,7 @@ function mapGoogleUserInfo(info: Record<string, unknown>): AuthUser {
     email: String(info.email ?? ''),
     name: (info.name as string) ?? null,
     photoUrl: (info.picture as string) ?? null,
+    role: UserRole.EMPLOYEE, // Default role for Google users; replace with API lookup later
   };
 }
 
@@ -140,7 +160,7 @@ function GoogleAuthProviderContent({ children }: AuthProviderProps) {
     };
   }, [isRestored, fullResult]);
 
-  const login = useCallback(async () => {
+  const login = useCallback(async (_mockUserId?: string) => {
     setIsLoading(true);
     try {
       const result = await promptAsync();
@@ -162,25 +182,28 @@ function GoogleAuthProviderContent({ children }: AuthProviderProps) {
     }
   }, []);
 
+  const emptyMockUsers: readonly AuthUser[] = useMemo(() => [], []);
+
   const value = useMemo<AuthContextValue>(
-    () => ({ user, isLoading: !isRestored || isLoading, login, logout }),
-    [user, isLoading, isRestored, login, logout]
+    () => ({ user, isLoading: !isRestored || isLoading, login, logout, mockUsers: emptyMockUsers }),
+    [user, isLoading, isRestored, login, logout, emptyMockUsers]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 /**
- * Mock auth provider when Google OAuth is not configured. No persistence.
+ * Mock auth provider when Google OAuth is not configured.
+ * Exposes MOCK_USERS so the login screen can show a user picker.
  */
 function MockAuthProviderContent({ children }: AuthProviderProps) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const login = useCallback(async () => {
+  const login = useCallback(async (mockUserId?: string) => {
     setIsLoading(true);
     try {
-      const u = await mockLogin();
+      const u = await mockLogin(mockUserId);
       setUser(u);
     } finally {
       setIsLoading(false);
@@ -195,7 +218,7 @@ function MockAuthProviderContent({ children }: AuthProviderProps) {
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, isLoading, login, logout }),
+    () => ({ user, isLoading, login, logout, mockUsers: MOCK_USERS }),
     [user, isLoading, login, logout]
   );
 

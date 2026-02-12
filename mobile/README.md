@@ -1,10 +1,10 @@
-# Balanço — Controle de Estoque
+# e-stok — Controle de Estoque
 
 App Expo (React Native) para lojas físicas. Nome e logo definidos com **ui-ux-pro-max**; ver `../design-system/balanco/BRAND-NAME-AND-LOGO.md` e `../design-system/balanco/MASTER.md`. Especificação em `../docs/`.
 
 ## Design system
 
-Telas seguem o design system **Sistema Estoque** (ui-ux-pro-max). Tokens em `shared/config/theme.ts`; componentes em `shared/ui` (Button, Card). Cores: primary `#15803D`, CTA `#0369A1`, background `#F0FDF4`. Alvos de toque mínimos 44px; espaçamento 8px entre botões.
+Telas seguem o design system **e-stok** (ui-ux-pro-max). Tokens em `shared/config/theme.ts`; componentes em `shared/ui` (Button, Card). Cores: primary `#3B82F6`, CTA `#4338CA`, background `#EFF6FF`. Logo: cubo isométrico (indigo/blue/cyan). Alvos de toque mínimos 44px; espaçamento 8px entre botões.
 
 ## Path aliases (tsconfig paths)
 

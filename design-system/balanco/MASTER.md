@@ -6,9 +6,10 @@
 
 ---
 
-**Project:** Balanco
+**Project:** e-stok
 **Generated:** 2026-02-06 23:05:22
-**Category:** E-commerce
+**Updated:** 2026-02-12
+**Category:** E-commerce / Inventory Management
 
 ---
 
@@ -16,15 +17,15 @@
 
 ### Color Palette
 
-| Role | Hex | CSS Variable |
-|------|-----|--------------|
-| Primary | `#15803D` | `--color-primary` |
-| Secondary | `#22C55E` | `--color-secondary` |
-| CTA/Accent | `#0369A1` | `--color-cta` |
-| Background | `#F0FDF4` | `--color-background` |
-| Text | `#14532D` | `--color-text` |
+| Role | Hex | CSS Variable | Note |
+|------|-----|--------------|------|
+| Primary | `#3B82F6` | `--color-primary` | Blue-500 (cube right face) |
+| Secondary | `#60A5FA` | `--color-secondary` | Blue-400 |
+| CTA/Accent | `#4338CA` | `--color-cta` | Indigo-700 (cube left face) |
+| Background | `#EFF6FF` | `--color-background` | Blue-50 |
+| Text | `#1E293B` | `--color-text` | Slate-800 |
 
-**Color Notes:** Pharmacy green + trust blue
+**Color Notes:** Indigo depth + Blue trust + Cyan energy — derived from the isometric cube logo
 
 ### Typography
 
@@ -68,7 +69,7 @@
 ```css
 /* Primary Button */
 .btn-primary {
-  background: #0369A1;
+  background: #4338CA;
   color: white;
   padding: 12px 24px;
   border-radius: 8px;
@@ -85,8 +86,8 @@
 /* Secondary Button */
 .btn-secondary {
   background: transparent;
-  color: #15803D;
-  border: 2px solid #15803D;
+  color: #3B82F6;
+  border: 2px solid #3B82F6;
   padding: 12px 24px;
   border-radius: 8px;
   font-weight: 600;
@@ -99,7 +100,7 @@
 
 ```css
 .card {
-  background: #F0FDF4;
+  background: #EFF6FF;
   border-radius: 12px;
   padding: 24px;
   box-shadow: var(--shadow-md);
@@ -125,9 +126,9 @@
 }
 
 .input:focus {
-  border-color: #15803D;
+  border-color: #3B82F6;
   outline: none;
-  box-shadow: 0 0 0 3px #15803D20;
+  box-shadow: 0 0 0 3px #3B82F620;
 }
 ```
 

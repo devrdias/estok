@@ -1,22 +1,22 @@
 # Brand: Name and Logo
 
-Defined using the **ui-ux-pro-max** skill (design system: Vibrant & Block-based, retail/inventory).  
+Defined using the **ui-ux-pro-max** skill (design system: Modern & Geometric, retail/inventory).  
 Source: `design-system/balanco/MASTER.md`.
 
 ---
 
 ## Name
 
-### Primary: **Balanço**
+### Primary: **e-stok**
 
-- **Meaning (PT):** Balance; inventory balance; “dar balanço” = get things in order. Fits controle de estoque and contagem.
-- **Use:** App name in UI (splash, header, settings). Prefer **Balanço** in PT and **Balanço** in EN (or tagline “Inventory in balance” where needed).
-- **Spelling:** With cedilla in PT: **Balanço**. In code/ASCII: `Balanco`.
+- **Meaning:** "e" (electronic/digital) + "stok" (stock/inventory). Clear, modern, tech-forward name for an inventory control app.
+- **Use:** App name in UI (splash, header, settings). Use **e-stok** consistently across PT and EN contexts.
+- **Spelling:** Always lowercase: **e-stok**. In code/slug: `e-stok`.
 
 ### Tagline (optional)
 
 - **PT:** _Controle de estoque na palma da mão._
-- **EN:** _Inventory in balance._
+- **EN:** _Smart inventory, simplified._
 
 ---
 
@@ -24,25 +24,27 @@ Source: `design-system/balanco/MASTER.md`.
 
 ### Concept
 
-- **Idea:** Geometric, block-based mark (aligned with MASTER style). Suggests **inventory** (stacked items) and **balance** (order, control).
-- **Shape:** Three stacked blocks (simplified boxes/cubes). Clean, recognizable at small sizes (app icon, favicon).
-- **Colors (from MASTER):**
-  - Primary green: `#15803D`
-  - Secondary green: `#22C55E`
-  - Accent blue: `#0369A1` (optional for one block or variant)
-- **No emoji.** Use only the SVG logo (see skill: “Use SVG icons”, “Correct brand logos”).
+- **Idea:** Isometric cube — a universal symbol for packages, boxes, and inventory. Clean, geometric, modern.
+- **Shape:** 3D isometric cube with three visible faces at different brightness levels, creating depth. Recognizable at all sizes (app icon, favicon, in-app).
+- **Colors (from brand palette):**
+  - Top face (lightest): `#93C5FD` (Blue-300)
+  - Right face (medium): `#3B82F6` (Blue-500)
+  - Left face (darkest): `#4338CA` (Indigo-700)
+- **App icon extras:** Gradient background (`#4F46E5` → `#3B82F6` → `#06B6D4`), green check badge (`#10B981`)
+- **No emoji.** Use only the SVG logo (see skill: "Use SVG icons", "Correct brand logos").
 
 ### Usage
 
-- **App icon:** Use `assets/logo.svg` (or exported 1024×1024 PNG from it).
+- **App icon:** Use `assets/icon.png` (1024×1024 PNG with gradient background).
 - **In-app:** Header, splash, Configurações. Min height ~24px for inline, 32–40px for header.
 - **Clear space:** Keep padding ≥ logo height/4 around the mark.
 
 ### Files
 
-- **Logo mark (SVG):** `mobile/assets/logo.svg` — stacked blocks (48×48 viewBox), primary `#15803D`, top block `#22C55E`. Use for app icon source, in-app mark.
-- **Logo + wordmark (SVG):** `mobile/assets/logo-wordmark.svg` — mark + “Balanço” (Rubik 700, `#14532D`). Use for splash, header, settings.
-- **Icon (SVG):** `mobile/assets/logo-icon.svg` — compact 32×32 mark for favicon, tab bar, small contexts.
+- **Logo mark (SVG):** `mobile/assets/logo.svg` — isometric cube (48×48 viewBox). Faces: `#4338CA`, `#3B82F6`, `#93C5FD`. Use for in-app mark.
+- **Logo + wordmark (SVG):** `mobile/assets/logo-wordmark.svg` — cube + "e-stok" (Rubik 700, `#1E293B`). Use for splash, header, settings.
+- **Icon (SVG):** `mobile/assets/logo-icon.svg` — compact 32×32 cube for favicon, tab bar, small contexts.
+- **App icons (PNG):** `mobile/assets/icon.png`, `adaptive-icon.png`, `favicon.png`, `splash-icon.png`.
 
 ---
 
@@ -50,7 +52,8 @@ Source: `design-system/balanco/MASTER.md`.
 
 | Item   | Value |
 |--------|--------|
-| **Name** | Balanço |
-| **Code/ASCII** | Balanco |
-| **Logo** | Geometric stacked blocks (SVG); `logo.svg`, `logo-wordmark.svg`, `logo-icon.svg`; primary `#15803D`, secondary `#22C55E` |
+| **Name** | e-stok |
+| **Code/slug** | e-stok |
+| **Logo** | Isometric cube (SVG); `logo.svg`, `logo-wordmark.svg`, `logo-icon.svg`; faces `#4338CA`, `#3B82F6`, `#93C5FD` |
+| **App icon** | Indigo→Blue→Cyan gradient + white cube + green check badge |
 | **Typography** | Rubik (headings), Nunito Sans (body) — see MASTER.md |

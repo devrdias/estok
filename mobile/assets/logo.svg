@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" aria-hidden="true" role="img">
-  <title>Balanço — Controle de estoque</title>
-  <!-- Stacked blocks: inventory / balance. Primary #15803D, secondary #22C55E -->
-  <rect x="10" y="28" width="28" height="12" rx="3" fill="#15803D"/>
-  <rect x="12" y="18" width="24" height="12" rx="3" fill="#15803D"/>
-  <rect x="14" y="8" width="20" height="12" rx="3" fill="#22C55E"/>
+  <title>e-stok — Controle de estoque</title>
+  <!-- Isometric cube: inventory / stock. Indigo #4338CA, Blue #3B82F6, Light Blue #93C5FD -->
+  <polygon points="13.6,18 24,24 24,36 13.6,30" fill="#4338CA"/>
+  <polygon points="24,24 34.4,18 34.4,30 24,36" fill="#3B82F6"/>
+  <polygon points="24,12 34.4,18 24,24 13.6,18" fill="#93C5FD"/>
 </svg>

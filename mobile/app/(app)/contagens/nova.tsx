@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useErpProvider } from '@/shared/api';
 import type { EstruturaMercadologica } from '@/shared/api/erp-provider-types';
 import type { Estoque } from '@/entities/estoque/model/types';
-import { ValorAConsiderar } from '@/entities/contagem/model/types';
+import { ValorAConsiderar, ModalidadeContagem } from '@/entities/contagem/model/types';
+import type { ModalidadeContagemValue } from '@/entities/contagem/model/types';
 import { useTheme } from '@/shared/config';
-import { Button, IconButton, SelectModal, type SelectOption } from '@/shared/ui';
+import { Button, SelectModal, MultiSelectModal, InfoModal, type SelectOption } from '@/shared/ui';
 
 /**
  * Nova contagem: Estoque (dropdown/modal), Valor a considerar (chips), Criar.
@@ -22,10 +23,12 @@ export default function NovaContagemScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [selectedStockId, setSelectedStockId] = useState<string>('');
   const [estruturas, setEstruturas] = useState<EstruturaMercadologica[]>([]);
-  const [selectedEstruturaId, setSelectedEstruturaId] = useState<string>('');
+  const [selectedEstruturaIds, setSelectedEstruturaIds] = useState<string[]>([]);
   const [valorAConsiderar, setValorAConsiderar] = useState<'VENDA' | 'CUSTO'>('VENDA');
+  const [modalidadeContagem, setModalidadeContagem] = useState<ModalidadeContagemValue>(ModalidadeContagem.LOJA_FECHADA);
   const [stockModalVisible, setStockModalVisible] = useState(false);
   const [estruturaModalVisible, setEstruturaModalVisible] = useState(false);
+  const [storeModeHelpVisible, setStoreModeHelpVisible] = useState(false);
 
   const styles = useMemo(
     () =>
@@ -42,14 +45,6 @@ export default function NovaContagemScreen() {
           alignItems: 'center',
           backgroundColor: theme.colors.background,
         },
-        header: {
-          flexDirection: 'row',
-          alignItems: 'center',
-          marginBottom: theme.spacing.lg,
-          gap: theme.spacing.sm,
-        },
-        headerSpacer: { width: 40 },
-        title: { flex: 1, ...theme.typography.titleSmall, color: theme.colors.text, textAlign: 'center' },
         fieldBlock: { marginBottom: theme.spacing.lg },
         field: { marginBottom: theme.spacing.lg },
         label: { ...theme.typography.section, color: theme.colors.text, marginBottom: theme.spacing.sm },
@@ -80,6 +75,28 @@ export default function NovaContagemScreen() {
         chipActive: { backgroundColor: theme.colors.cta, borderColor: theme.colors.cta },
         chipText: { ...theme.typography.body, color: theme.colors.text },
         chipTextActive: { color: theme.colors.white, fontWeight: '600' },
+        labelInline: { ...theme.typography.section, color: theme.colors.text },
+        labelRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: theme.spacing.xs,
+          marginBottom: theme.spacing.sm,
+        },
+        helpButton: {
+          width: 24,
+          height: 24,
+          borderRadius: 12,
+          borderWidth: 1.5,
+          borderColor: theme.colors.textMuted,
+          justifyContent: 'center',
+          alignItems: 'center',
+        },
+        helpText: {
+          fontSize: 14,
+          fontWeight: '700',
+          color: theme.colors.textMuted,
+          lineHeight: 16,
+        },
       }),
     [theme]
   );
@@ -110,13 +127,19 @@ export default function NovaContagemScreen() {
       const c = await erp.createInventory({
         estoqueId: selectedStockId,
         valorAConsiderar,
-        ...(selectedEstruturaId && { estruturaMercadologicaId: selectedEstruturaId }),
+        modalidadeContagem,
+        ...(selectedEstruturaIds.length > 0 && { estruturaMercadologicaIds: selectedEstruturaIds }),
       });
       router.replace(`/(app)/contagens/${c.id}` as any);
+    } catch (error) {
+      Alert.alert(
+        t('newCount.createErrorTitle'),
+        error instanceof Error ? error.message : t('newCount.createErrorMessage'),
+      );
     } finally {
       setSubmitting(false);
     }
-  }, [erp, selectedStockId, selectedEstruturaId, valorAConsiderar, router]);
+  }, [erp, selectedStockId, selectedEstruturaIds, valorAConsiderar, modalidadeContagem, router, t]);
 
   if (loading) {
     return (
@@ -128,26 +151,17 @@ export default function NovaContagemScreen() {
 
   const canSubmit = !!selectedStockId;
   const selectedStock = stocks.find((s) => s.id === selectedStockId);
-  const selectedEstrutura = estruturas.find((e) => e.id === selectedEstruturaId);
   const stockOptions: SelectOption[] = stocks.map((s) => ({ value: s.id, label: s.nome }));
-  const estruturaOptions: SelectOption[] = [
-    { value: '', label: t('newCount.allCategories') },
-    ...estruturas.map((e) => ({ value: e.id, label: e.nome })),
-  ];
+  const estruturaOptions: SelectOption[] = estruturas.map((e) => ({ value: e.id, label: e.nome }));
+
+  /** Display label for the multi-select trigger: "Todas" or "N selecionada(s)". */
+  const estruturaDisplayLabel =
+    selectedEstruturaIds.length === 0
+      ? t('newCount.allCategories')
+      : t('newCount.selectedCount', { count: selectedEstruturaIds.length });
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <IconButton
-          onPress={() => router.back()}
-          icon="arrow-back"
-          variant="ghost"
-          accessibilityLabel={t('common.back')}
-        />
-        <Text style={styles.title}>{t('newCount.title')}</Text>
-        <View style={styles.headerSpacer} />
-      </View>
-
       <Pressable
         style={styles.fieldBlock}
         onPress={() => setStockModalVisible(true)}
@@ -168,17 +182,54 @@ export default function NovaContagemScreen() {
           style={styles.fieldBlock}
           onPress={() => setEstruturaModalVisible(true)}
           accessibilityRole="button"
-          accessibilityLabel={`${t('newCount.structureLabel')}: ${selectedEstrutura?.nome ?? t('newCount.allCategories')}`}
+          accessibilityLabel={`${t('newCount.structureLabel')}: ${estruturaDisplayLabel}`}
         >
           <Text style={styles.label}>{t('newCount.structureLabel')}</Text>
           <View style={styles.dropdownTrigger}>
             <Text style={styles.dropdownValue} numberOfLines={1}>
-              {selectedEstrutura ? selectedEstrutura.nome : t('newCount.allCategories')}
+              {estruturaDisplayLabel}
             </Text>
             <Text style={styles.dropdownChevron}>▼</Text>
           </View>
         </Pressable>
       )}
+
+      <View style={styles.field}>
+        <View style={styles.labelRow}>
+          <Text style={styles.labelInline}>{t('newCount.storeModeLabel')}</Text>
+          <Pressable
+            style={styles.helpButton}
+            onPress={() => setStoreModeHelpVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t('newCount.storeModeHelpTitle')}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.helpText}>?</Text>
+          </Pressable>
+        </View>
+        <View style={styles.row}>
+          <Pressable
+            style={[styles.chip, modalidadeContagem === ModalidadeContagem.LOJA_FECHADA && styles.chipActive]}
+            onPress={() => setModalidadeContagem(ModalidadeContagem.LOJA_FECHADA)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: modalidadeContagem === ModalidadeContagem.LOJA_FECHADA }}
+          >
+            <Text style={[styles.chipText, modalidadeContagem === ModalidadeContagem.LOJA_FECHADA && styles.chipTextActive]}>
+              {t('newCount.storeModeClosed')}
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.chip, modalidadeContagem === ModalidadeContagem.LOJA_FUNCIONANDO && styles.chipActive]}
+            onPress={() => setModalidadeContagem(ModalidadeContagem.LOJA_FUNCIONANDO)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: modalidadeContagem === ModalidadeContagem.LOJA_FUNCIONANDO }}
+          >
+            <Text style={[styles.chipText, modalidadeContagem === ModalidadeContagem.LOJA_FUNCIONANDO && styles.chipTextActive]}>
+              {t('newCount.storeModeOpen')}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
 
       <View style={styles.field}>
         <Text style={styles.label}>{t('newCount.valueToConsider')}</Text>
@@ -226,15 +277,23 @@ export default function NovaContagemScreen() {
         onSelect={setSelectedStockId}
       />
       {estruturas.length > 0 && (
-        <SelectModal
+        <MultiSelectModal
           visible={estruturaModalVisible}
           onClose={() => setEstruturaModalVisible(false)}
           title={t('newCount.structureLabel')}
           options={estruturaOptions}
-          selectedValue={selectedEstruturaId || null}
-          onSelect={setSelectedEstruturaId}
+          selectedValues={selectedEstruturaIds}
+          onSelectionChange={setSelectedEstruturaIds}
+          allOptionLabel={t('newCount.allCategories')}
         />
       )}
+
+      <InfoModal
+        visible={storeModeHelpVisible}
+        onClose={() => setStoreModeHelpVisible(false)}
+        title={t('newCount.storeModeHelpTitle')}
+        body={t('newCount.storeModeHelpBody')}
+      />
     </ScrollView>
   );
 }

@@ -1,33 +1,44 @@
 import { Platform } from 'react-native';
 
-/** Color palette for light mode (design-system Sistema Estoque). */
+/**
+ * Color palette for light mode (e-stok brand — Indigo/Blue/Cyan).
+ *
+ * Derived from the isometric-cube logo:
+ * - Indigo #4338CA (cube left face)  → cta / accents
+ * - Blue   #3B82F6 (cube right face) → primary
+ * - Cyan   #06B6D4 (gradient end)    → secondary
+ */
 export const lightColors = {
-  primary: '#15803D',
-  secondary: '#22C55E',
-  cta: '#0369A1',
-  background: '#F0FDF4',
+  primary: '#3B82F6',
+  secondary: '#60A5FA',
+  cta: '#4338CA',
+  background: '#EFF6FF',
   backgroundCard: '#FFFFFF',
-  text: '#14532D',
-  textMuted: '#475569',
+  text: '#1E293B',
+  textMuted: '#64748B',
   border: '#E2E8F0',
   borderLight: '#F1F5F9',
   danger: '#DC2626',
   white: '#FFFFFF',
 } as const;
 
-/** Color palette for dark mode (readable contrast, same brand accents). */
+/**
+ * Color palette for dark mode (readable contrast, same brand accents).
+ *
+ * Lighter tints of the brand colors for legibility on dark backgrounds.
+ */
 export const darkColors = {
-  primary: '#22C55E',
-  secondary: '#4ADE80',
-  cta: '#0EA5E9',
-  background: '#0f172a',
-  backgroundCard: '#1e293b',
-  text: '#f8fafc',
-  textMuted: '#94a3b8',
+  primary: '#60A5FA',
+  secondary: '#93C5FD',
+  cta: '#818CF8',
+  background: '#0F172A',
+  backgroundCard: '#1E293B',
+  text: '#F8FAFC',
+  textMuted: '#94A3B8',
   border: '#334155',
   borderLight: '#475569',
-  danger: '#f87171',
-  white: '#ffffff',
+  danger: '#F87171',
+  white: '#FFFFFF',
 } as const;
 
 export type ColorScheme = 'light' | 'dark';

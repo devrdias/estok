@@ -1,14 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView, TextInput, ActivityIndicator, Alert } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useErpProvider } from '@/shared/api';
 import type { InventoryItem } from '@/shared/api/erp-provider-types';
 import { CountStatus } from '@/entities/contagem/model/types';
 import { usePermissions } from '@/features/auth/model';
-import { getStoredProductSortOrder, ProductSortOrder, type ProductSortOrderValue } from '@/shared/config';
+import { getStoredProductSortOrder, getStoredBlindCount, ProductSortOrder, type ProductSortOrderValue } from '@/shared/config';
 import { useTheme } from '@/shared/config';
-import { Button, Card, IconButton } from '@/shared/ui';
+import { Button, Card } from '@/shared/ui';
 
 /**
  * Contagem 3: contagem de fato — resumo, tabela, registrar quantidade.
@@ -24,13 +24,17 @@ export default function ContagemFatoScreen() {
   const [inventory, setInventory] = useState<{ status: string; dataInicio: string } | null>(null);
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingProductId, setEditingProductId] = useState<string | null>(null);
-  const [inputQty, setInputQty] = useState('');
   const [finalizing, setFinalizing] = useState(false);
   /** Product currently in "one retry" after divergence (contagem às cegas). */
   const [secondChanceProductId, setSecondChanceProductId] = useState<string | null>(null);
   /** Phase 2: configurable product list order (from Configurações). */
   const [sortOrder, setSortOrder] = useState<ProductSortOrderValue>('nome');
+  /** Blind count mode: when enabled, divergence alert blocks save for recount. */
+  const [blindCount, setBlindCount] = useState(false);
+  /** Per-item input values keyed by produtoId. */
+  const [itemInputs, setItemInputs] = useState<Record<string, string>>({});
+  /** Ref map for auto-focusing TextInput per row. */
+  const inputRefs = useRef<Record<string, TextInput | null>>({});
 
   const styles = useMemo(
     () =>
@@ -71,6 +75,8 @@ export default function ContagemFatoScreen() {
           fontWeight: '600',
           color: theme.colors.text,
         },
+        tableScroll: { marginHorizontal: -theme.spacing.md },
+        tableScrollContent: { paddingHorizontal: theme.spacing.md },
         table: {
           borderWidth: 1,
           borderColor: theme.colors.border,
@@ -79,21 +85,34 @@ export default function ContagemFatoScreen() {
         },
         tableRow: {
           flexDirection: 'row',
-          padding: theme.spacing.sm + 2,
+          alignItems: 'center',
+          paddingVertical: theme.spacing.xs,
+          paddingHorizontal: theme.spacing.sm,
           borderBottomWidth: 1,
           borderBottomColor: theme.colors.border,
         },
-        cell: {
-          flex: 1,
+        /** Shared base for every text cell — typography + vertical padding for alignment. */
+        cellBase: {
           ...theme.typography.bodySmall,
           color: theme.colors.text,
-          minWidth: 56,
+          paddingVertical: theme.spacing.xs,
+          paddingHorizontal: theme.spacing.xs,
         },
-        cellSmall: { minWidth: 64 },
-        cellHeader: { fontWeight: '600', backgroundColor: theme.colors.borderLight },
+        cellCode: { width: 70, minWidth: 70 },
+        cellProduct: { width: 150, minWidth: 150 },
+        cellValue: { width: 80, minWidth: 80 },
+        cellSystemQty: { width: 80, minWidth: 80 },
+        cellCountedQty: { width: 150, minWidth: 150, paddingHorizontal: theme.spacing.xs },
+        cellBalance: { width: 80, minWidth: 80 },
+        cellCountedAt: { width: 110, minWidth: 110 },
+        cellHeader: {
+          fontWeight: '600',
+          backgroundColor: theme.colors.borderLight,
+        },
         saldoDivergente: { color: theme.colors.danger, fontWeight: '600' },
         inputRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
         input: {
+          flex: 1,
           borderWidth: 1,
           borderColor: theme.colors.border,
           borderRadius: theme.radius.sm,
@@ -115,22 +134,15 @@ export default function ContagemFatoScreen() {
           fontWeight: '600',
           ...theme.typography.bodySmall,
         },
-        editLink: { color: theme.colors.cta, ...theme.typography.bodySmall },
         pressed: { opacity: 0.9 },
         finalizeButton: { marginTop: theme.spacing.md },
-        header: {
-          flexDirection: 'row',
-          alignItems: 'center',
-          marginBottom: theme.spacing.md,
-          gap: theme.spacing.sm,
-        },
-        headerSpacer: { flex: 1 },
       }),
     [theme]
   );
 
   useEffect(() => {
     getStoredProductSortOrder().then(setSortOrder);
+    getStoredBlindCount().then(setBlindCount);
   }, []);
 
   const load = useCallback(async () => {
@@ -150,22 +162,31 @@ export default function ContagemFatoScreen() {
   }, [load]);
 
   const isReadOnly = inventory?.status === CountStatus.FINALIZADO;
-  const total = items.length;
-  const counted = items.filter((i) => i.qtdContada != null).length;
-  const pct = total ? Math.round((counted / total) * 100) : 0;
+  /** Number of distinct product SKUs in this inventory. */
+  const totalProducts = items.length;
+  /** How many product lines have been counted at least once (progress). */
+  const productsCounted = items.filter((i) => i.qtdContada != null).length;
+  const productsPct = totalProducts ? Math.round((productsCounted / totalProducts) * 100) : 0;
+  /** Sum of all system quantities (total items expected). */
+  const totalSystemItems = items.reduce((sum, i) => sum + i.qtdSistema, 0);
+  /** Sum of all counted quantities (total items registered). */
+  const totalCountedItems = items.reduce((sum, i) => sum + (i.qtdContada ?? 0), 0);
 
   const daysSinceStart = inventory?.dataInicio
     ? Math.max(1, Math.floor((Date.now() - new Date(inventory.dataInicio).getTime()) / 86400000))
     : 1;
-  const velocityPct = total && daysSinceStart > 0 ? ((counted / total) * 100) / daysSinceStart : 0;
+  const velocityPct = totalProducts && daysSinceStart > 0 ? ((productsCounted / totalProducts) * 100) / daysSinceStart : 0;
 
   const doRegister = async (productId: string, qty: number) => {
     if (!id) return;
     const result = await erp.registerCountedQuantity(id, productId, qty);
     if (result.success) {
-      setEditingProductId(null);
       setSecondChanceProductId(null);
-      setInputQty('');
+      setItemInputs((prev) => {
+        const next = { ...prev };
+        delete next[productId];
+        return next;
+      });
       load();
     } else {
       Alert.alert(t('counts.divergenceTitle'), result.message);
@@ -193,7 +214,8 @@ export default function ContagemFatoScreen() {
   };
 
   const handleRegister = async (productId: string) => {
-    const qty = parseInt(inputQty, 10);
+    const raw = itemInputs[productId] ?? '';
+    const qty = parseInt(raw, 10);
     if (isNaN(qty) || !id) return;
     const item = items.find((i) => i.produtoId === productId);
     if (!item) return;
@@ -201,35 +223,41 @@ export default function ContagemFatoScreen() {
     const checksOk = await runPreRegisterChecks(productId);
     if (!checksOk) return;
 
-    const isDivergence = qty !== item.qtdSistema;
-    const isSecondChance = secondChanceProductId === productId;
+    /**
+     * Divergence alert only when blind count is enabled.
+     * When disabled, the balance column already highlights divergence visually,
+     * and blocking every save with an alert makes the workflow unusable.
+     */
+    if (blindCount) {
+      const isDivergence = qty !== item.qtdSistema;
+      const isSecondChance = secondChanceProductId === productId;
 
-    if (isDivergence && !isSecondChance) {
-      Alert.alert(
-        t('counts.divergenceTitle'),
-        t('counts.divergenceMessage'),
-        [
-          { text: t('counts.keepCount'), onPress: () => doRegister(productId, qty) },
-          { text: t('counts.refillCount'), onPress: () => setSecondChanceProductId(productId) },
-        ]
-      );
-      return;
+      if (isDivergence && !isSecondChance) {
+        Alert.alert(
+          t('counts.divergenceTitle'),
+          t('counts.divergenceMessage'),
+          [
+            { text: t('counts.refillCount'), style: 'cancel', onPress: () => setSecondChanceProductId(productId) },
+            { text: t('counts.keepCount'), onPress: () => doRegister(productId, qty) },
+          ]
+        );
+        return;
+      }
     }
+
     doRegister(productId, qty);
   };
 
-  const openEdit = (productId: string) => {
-    setEditingProductId(productId);
-    setSecondChanceProductId(null);
-    const item = items.find((i) => i.produtoId === productId);
-    setInputQty(item?.qtdContada != null ? String(item.qtdContada) : '');
+  /** Update the input value for a specific product row. */
+  const setItemInput = (productId: string, value: string) => {
+    setItemInputs((prev) => ({ ...prev, [productId]: value }));
   };
 
   const handleFinalize = () => {
     if (!id) return;
     Alert.alert(
       t('counts.finalize'),
-      undefined,
+      t('counts.finalizeConfirmMessage'),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
@@ -242,6 +270,11 @@ export default function ContagemFatoScreen() {
                 dataFinalizacao: new Date().toISOString(),
               });
               await load();
+            } catch (error) {
+              Alert.alert(
+                t('counts.finalizeErrorTitle'),
+                error instanceof Error ? error.message : t('counts.finalizeErrorMessage'),
+              );
             } finally {
               setFinalizing(false);
             }
@@ -279,15 +312,7 @@ export default function ContagemFatoScreen() {
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <IconButton
-          onPress={() => router.back()}
-          icon="arrow-back"
-          variant="ghost"
-          accessibilityLabel={t('common.back')}
-        />
-        <View style={styles.headerSpacer} />
-      </View>
+      <Stack.Screen options={{ title: `${t('counts.title')} #${id}` }} />
       {isReadOnly && (
         <View style={styles.readOnlyBanner}>
           <Text style={styles.readOnlyText}>{t('counts.viewOnly')}</Text>
@@ -302,13 +327,19 @@ export default function ContagemFatoScreen() {
           </Text>
         </View>
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Qtd. produtos</Text>
-          <Text style={styles.summaryValue}>{total}</Text>
+          <Text style={styles.summaryLabel}>{t('counts.totalProducts')}</Text>
+          <Text style={styles.summaryValue}>{totalProducts}</Text>
         </View>
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Contados</Text>
+          <Text style={styles.summaryLabel}>{t('counts.productsCounted')}</Text>
           <Text style={styles.summaryValue}>
-            {counted} ({pct}%)
+            {productsCounted}/{totalProducts} ({productsPct}%)
+          </Text>
+        </View>
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryLabel}>{t('counts.itemsCounted')}</Text>
+          <Text style={styles.summaryValue}>
+            {totalCountedItems}/{totalSystemItems}
           </Text>
         </View>
         <View style={styles.summaryRow}>
@@ -317,76 +348,79 @@ export default function ContagemFatoScreen() {
         </View>
       </Card>
 
-      <View style={styles.table}>
-        <View style={styles.tableRow}>
-          <Text style={[styles.cell, styles.cellHeader]}>{t('counts.code')}</Text>
-          <Text style={[styles.cell, styles.cellHeader]}>Produto</Text>
-          <Text style={[styles.cell, styles.cellHeader]}>Valor</Text>
-          <Text style={[styles.cell, styles.cellHeader]}>Qtd. sistema</Text>
-          <Text style={[styles.cell, styles.cellHeader]}>Qtd. contada</Text>
-          <Text style={[styles.cell, styles.cellHeader]}>{t('counts.balance')}</Text>
-          <Text style={[styles.cell, styles.cellHeader]}>{t('counts.countedAt')}</Text>
-        </View>
-        {sortedItems.map((item) => {
-          const balance = saldo(item);
-          return (
-            <View key={item.id} style={styles.tableRow}>
-              <Text style={styles.cell}>{item.produtoId}</Text>
-              <Text style={styles.cell}>{item.produtoNome}</Text>
-              <Text style={styles.cell}>{item.valorUnitario.toFixed(2)}</Text>
-              <Text style={styles.cell}>{item.qtdSistema}</Text>
-              <View style={styles.cell}>
-                {!isReadOnly && editingProductId === item.produtoId ? (
-                  <View style={styles.inputRow}>
-                    <TextInput
-                      style={styles.input}
-                      value={inputQty}
-                      onChangeText={setInputQty}
-                      keyboardType="number-pad"
-                      placeholder="0"
-                      placeholderTextColor={theme.colors.textMuted}
-                      onSubmitEditing={() => handleRegister(item.produtoId)}
-                      returnKeyType="done"
-                    />
-                    <Pressable
-                      style={({ pressed }) => [styles.confirmBtn, pressed && styles.pressed]}
-                      onPress={() => handleRegister(item.produtoId)}
-                      accessibilityRole="button"
-                      accessibilityLabel="Confirmar quantidade"
-                    >
-                      <Text style={styles.confirmBtnText}>OK</Text>
-                    </Pressable>
-                  </View>
-                ) : !isReadOnly ? (
-                  <Pressable
-                    onPress={() => openEdit(item.produtoId)}
-                    style={({ pressed }) => pressed && styles.pressed}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Editar quantidade: ${item.qtdContada ?? '—'}`}
-                  >
-                    <Text style={styles.editLink}>{item.qtdContada ?? '—'} tap</Text>
-                  </Pressable>
-                ) : (
-                  <Text style={styles.cell}>{item.qtdContada ?? '—'}</Text>
-                )}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={true}
+        contentContainerStyle={styles.tableScrollContent}
+        style={styles.tableScroll}
+      >
+        <View style={styles.table}>
+          <View style={styles.tableRow}>
+            <Text style={[styles.cellBase, styles.cellCode, styles.cellHeader]}>{t('counts.code')}</Text>
+            <Text style={[styles.cellBase, styles.cellProduct, styles.cellHeader]}>Produto</Text>
+            <Text style={[styles.cellBase, styles.cellValue, styles.cellHeader]}>Valor</Text>
+            <Text style={[styles.cellBase, styles.cellSystemQty, styles.cellHeader]}>Qtd. sistema</Text>
+            <Text style={[styles.cellBase, styles.cellCountedQty, styles.cellHeader]}>Qtd. contada</Text>
+            <Text style={[styles.cellBase, styles.cellBalance, styles.cellHeader]}>{t('counts.balance')}</Text>
+            <Text style={[styles.cellBase, styles.cellCountedAt, styles.cellHeader]}>{t('counts.countedAt')}</Text>
+          </View>
+          {sortedItems.map((item) => {
+            const balance = saldo(item);
+            return (
+              <View key={item.id} style={styles.tableRow}>
+                <Text style={[styles.cellBase, styles.cellCode]} numberOfLines={1} ellipsizeMode="tail">{item.produtoId}</Text>
+                <Text style={[styles.cellBase, styles.cellProduct]} numberOfLines={1} ellipsizeMode="tail">{item.produtoNome}</Text>
+                <Text style={[styles.cellBase, styles.cellValue]}>{item.valorUnitario.toFixed(2)}</Text>
+                <Text style={[styles.cellBase, styles.cellSystemQty]}>{item.qtdSistema}</Text>
+                <View style={styles.cellCountedQty}>
+                  {!isReadOnly ? (
+                    <View style={styles.inputRow}>
+                      <TextInput
+                        ref={(ref) => { inputRefs.current[item.produtoId] = ref; }}
+                        style={styles.input}
+                        value={itemInputs[item.produtoId] ?? (item.qtdContada != null ? String(item.qtdContada) : '')}
+                        onChangeText={(v) => setItemInput(item.produtoId, v)}
+                        keyboardType="number-pad"
+                        placeholder={String(item.qtdContada ?? '—')}
+                        placeholderTextColor={theme.colors.textMuted}
+                        onSubmitEditing={() => handleRegister(item.produtoId)}
+                        returnKeyType="done"
+                        selectTextOnFocus
+                        accessibilityLabel={`${t('counts.countedQtyLabel')}: ${item.produtoNome}`}
+                      />
+                      <Pressable
+                        style={({ pressed }) => [styles.confirmBtn, pressed && styles.pressed]}
+                        onPress={() => handleRegister(item.produtoId)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${t('common.ok')}: ${item.produtoNome}`}
+                      >
+                        <Text style={styles.confirmBtnText}>OK</Text>
+                      </Pressable>
+                    </View>
+                  ) : (
+                    <Text style={[styles.cellBase, styles.cellCountedQty]}>
+                      {item.qtdContada ?? '—'}
+                    </Text>
+                  )}
+                </View>
+                <Text style={[styles.cellBase, styles.cellBalance, balance !== null && balance !== 0 && styles.saldoDivergente]}>
+                  {balance !== null ? (balance >= 0 ? `+${balance}` : balance) : '—'}
+                </Text>
+                <Text style={[styles.cellBase, styles.cellCountedAt]}>
+                  {item.dataHoraContagem
+                    ? new Date(item.dataHoraContagem).toLocaleString(undefined, {
+                        day: '2-digit',
+                        month: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })
+                    : '—'}
+                </Text>
               </View>
-              <Text style={[styles.cell, balance !== null && balance !== 0 && styles.saldoDivergente]}>
-                {balance !== null ? (balance >= 0 ? `+${balance}` : balance) : '—'}
-              </Text>
-              <Text style={[styles.cell, styles.cellSmall]}>
-                {item.dataHoraContagem
-                  ? new Date(item.dataHoraContagem).toLocaleString(undefined, {
-                      day: '2-digit',
-                      month: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })
-                  : '—'}
-              </Text>
-            </View>
-          );
-        })}
-      </View>
+            );
+          })}
+        </View>
+      </ScrollView>
 
       {!isReadOnly && canFinalizeCount && (
         <Button

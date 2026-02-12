@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '@/features/auth/model';
+import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
+import { useAuth, usePermissions, UserRole } from '@/features/auth/model';
+import type { UserRoleValue } from '@/features/auth/model';
 import { setStoredLanguage } from '@/shared/config/i18n';
 import i18n from '@/shared/config/i18n';
 import {
@@ -10,13 +13,55 @@ import {
   setStoredProductSortOrder,
   ProductSortOrder,
   type ProductSortOrderValue,
+  getStoredBlindCount,
+  setStoredBlindCount,
   useTheme,
   useThemePreference,
 } from '@/shared/config';
-import { Button, Card, Logo } from '@/shared/ui';
+import { Button, Card, Logo, SegmentedControl } from '@/shared/ui';
+
+/** Map role value to its translated label. */
+function getRoleLabel(role: UserRoleValue, t: (key: string) => string): string {
+  switch (role) {
+    case UserRole.ADMIN:
+      return t('auth.roleAdmin');
+    case UserRole.MANAGER:
+      return t('auth.roleManager');
+    case UserRole.EMPLOYEE:
+      return t('auth.roleEmployee');
+    default:
+      return role;
+  }
+}
+
+/** Map role to an icon name. */
+function getRoleIcon(role: UserRoleValue): keyof typeof Ionicons.glyphMap {
+  switch (role) {
+    case UserRole.ADMIN:
+      return 'shield-checkmark';
+    case UserRole.MANAGER:
+      return 'briefcase';
+    case UserRole.EMPLOYEE:
+    default:
+      return 'person';
+  }
+}
+
+/** Extract initials from a user name (up to 2 characters). */
+function getInitials(name: string | null, email: string): string {
+  if (name) {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return name.slice(0, 2).toUpperCase();
+  }
+  return email.slice(0, 2).toUpperCase();
+}
+
+const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
 /**
- * Configurações: idioma, ordem da lista, conta, sair. Theme-aware (light/dark).
+ * Settings screen with profile header, preferences, and account management.
+ * Theme-aware (light/dark).
  */
 export default function ConfiguracoesScreen() {
   const theme = useTheme();
@@ -24,54 +69,138 @@ export default function ConfiguracoesScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { canChangeBlindCount } = usePermissions();
   const currentLng = i18n.language?.startsWith('en') ? 'en' : 'pt';
   const [productSort, setProductSort] = useState<ProductSortOrderValue>('nome');
+  const [blindCount, setBlindCount] = useState(false);
 
   const styles = useMemo(
     () =>
       StyleSheet.create({
-        scroll: { flex: 1 },
+        scroll: { flex: 1, backgroundColor: theme.colors.background },
         container: {
           padding: theme.spacing.lg,
-          paddingBottom: theme.spacing['2xl'],
-          backgroundColor: theme.colors.background,
+          paddingBottom: theme.spacing['3xl'],
         },
-        logo: { marginBottom: theme.spacing.lg },
-        title: { ...theme.typography.title, color: theme.colors.text, marginBottom: theme.spacing.lg },
-        section: { marginBottom: theme.spacing.lg },
+        /* ── Profile ── */
+        profileCard: {
+          alignItems: 'center',
+          paddingVertical: theme.spacing.xl,
+          paddingHorizontal: theme.spacing.lg,
+          marginBottom: theme.spacing.lg,
+        },
+        avatarContainer: {
+          width: 80,
+          height: 80,
+          borderRadius: 40,
+          backgroundColor: theme.colors.primary + '20',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: theme.spacing.md,
+        },
+        avatarImage: {
+          width: 80,
+          height: 80,
+          borderRadius: 40,
+        },
+        avatarInitials: {
+          fontSize: 28,
+          fontWeight: '700',
+          color: theme.colors.primary,
+        },
+        profileName: {
+          ...theme.typography.title,
+          color: theme.colors.text,
+          textAlign: 'center',
+          marginBottom: theme.spacing.xs,
+        },
+        profileEmail: {
+          ...theme.typography.bodySmall,
+          color: theme.colors.textMuted,
+          textAlign: 'center',
+          marginBottom: theme.spacing.sm,
+        },
+        roleBadge: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
+          paddingHorizontal: 12,
+          paddingVertical: 5,
+          borderRadius: 20,
+          backgroundColor: theme.colors.primary + '18',
+        },
+        roleBadgeText: {
+          ...theme.typography.caption,
+          fontWeight: '600',
+          color: theme.colors.primary,
+        },
+        /* ── Sections ── */
+        sectionHeader: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: theme.spacing.sm,
+          marginBottom: theme.spacing.md,
+          marginTop: theme.spacing.md,
+        },
         sectionTitle: {
           ...theme.typography.section,
           color: theme.colors.textMuted,
+          textTransform: 'uppercase',
+          letterSpacing: 0.5,
+        },
+        settingsCard: {
+          gap: 0,
+          padding: 0,
+          overflow: 'hidden',
+        },
+        /* ── Setting rows ── */
+        settingRow: {
+          paddingHorizontal: theme.spacing.lg,
+          paddingVertical: theme.spacing.md,
+        },
+        settingRowBorder: {
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderBottomColor: theme.colors.border,
+        },
+        settingLabel: {
+          ...theme.typography.body,
+          color: theme.colors.text,
+          fontWeight: '500',
           marginBottom: theme.spacing.sm,
         },
-        row: { flexDirection: 'row', gap: theme.spacing.md },
-        langButton: {
-          minHeight: theme.minTouchSize,
-          minWidth: theme.minTouchSize,
-          paddingHorizontal: theme.spacing.lg,
-          justifyContent: 'center',
+        settingDescription: {
+          ...theme.typography.caption,
+          color: theme.colors.textMuted,
+          marginBottom: theme.spacing.sm,
+        },
+        disabledOverlay: { opacity: 0.45 },
+        noPermissionHint: {
+          ...theme.typography.caption,
+          color: theme.colors.textMuted,
+          fontStyle: 'italic',
+          marginTop: theme.spacing.xs,
+        },
+        /* ── Footer ── */
+        footer: {
+          marginTop: theme.spacing.xl,
           alignItems: 'center',
-          borderRadius: theme.radius.md,
-          borderWidth: 1,
-          borderColor: theme.colors.border,
+          gap: theme.spacing.md,
         },
-        langButtonActive: { backgroundColor: theme.colors.cta, borderColor: theme.colors.cta },
-        langText: { ...theme.typography.body, color: theme.colors.text },
-        langTextActive: { color: theme.colors.white, fontWeight: '600' },
-        accountName: {
-          ...theme.typography.body,
-          fontWeight: '600',
-          color: theme.colors.text,
-          marginBottom: theme.spacing.xs,
+        logoutButton: {
+          width: '100%',
+          maxWidth: 280,
         },
-        accountEmail: { ...theme.typography.bodySmall, color: theme.colors.textMuted },
-        buttons: { gap: theme.touchGap },
+        versionText: {
+          ...theme.typography.caption,
+          color: theme.colors.textMuted,
+        },
       }),
-    [theme]
+    [theme],
   );
 
   useEffect(() => {
     getStoredProductSortOrder().then(setProductSort);
+    getStoredBlindCount().then(setBlindCount);
   }, []);
 
   const setLanguage = (lng: 'pt' | 'en') => setStoredLanguage(lng);
@@ -79,128 +208,147 @@ export default function ConfiguracoesScreen() {
     setStoredProductSortOrder(order);
     setProductSort(order);
   };
+  const toggleBlindCount = (value: string) => {
+    const enabled = value === 'yes';
+    setStoredBlindCount(enabled);
+    setBlindCount(enabled);
+  };
   const handleLogout = () => {
     logout();
-    router.replace('/(auth)/login' as any);
+    router.replace('/(auth)/login' as never);
   };
+
+  const languageOptions = [
+    { value: 'pt', label: 'Português' },
+    { value: 'en', label: 'English' },
+  ] as const;
+
+  const themeOptions = [
+    { value: 'system' as const, label: t('settings.themeSystem') },
+    { value: 'light' as const, label: t('settings.themeLight') },
+    { value: 'dark' as const, label: t('settings.themeDark') },
+  ];
+
+  const sortOptions = [
+    { value: ProductSortOrder.NOME, label: t('settings.sortByName') },
+    { value: ProductSortOrder.CODIGO, label: t('settings.sortByCode') },
+    { value: ProductSortOrder.VALOR, label: t('settings.sortByValue') },
+  ];
+
+  const blindCountOptions = [
+    { value: 'yes', label: t('settings.yes') },
+    { value: 'no', label: t('settings.no') },
+  ];
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
-      <Logo size={40} showWordmark accessibilityLabel="Balanço" style={styles.logo} />
-      <Text style={styles.title}>{t('settings.title')}</Text>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('settings.language')}</Text>
-        <View style={styles.row}>
-          <Pressable
-            style={[styles.langButton, currentLng === 'pt' && styles.langButtonActive]}
-            onPress={() => setLanguage('pt')}
-            accessibilityRole="button"
-            accessibilityLabel="Português"
-            accessibilityState={{ selected: currentLng === 'pt' }}
-          >
-            <Text style={[styles.langText, currentLng === 'pt' && styles.langTextActive]}>PT</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.langButton, currentLng === 'en' && styles.langButtonActive]}
-            onPress={() => setLanguage('en')}
-            accessibilityRole="button"
-            accessibilityLabel="English"
-            accessibilityState={{ selected: currentLng === 'en' }}
-          >
-            <Text style={[styles.langText, currentLng === 'en' && styles.langTextActive]}>EN</Text>
-          </Pressable>
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('settings.theme')}</Text>
-        <View style={styles.row}>
-          {(['system', 'light', 'dark'] as const).map((value) => (
-            <Pressable
-              key={value}
-              style={[styles.langButton, themePreference === value && styles.langButtonActive]}
-              onPress={() => setThemePreference(value)}
-              accessibilityRole="button"
-              accessibilityLabel={
-                value === 'system'
-                  ? t('settings.themeSystem')
-                  : value === 'light'
-                    ? t('settings.themeLight')
-                    : t('settings.themeDark')
-              }
-              accessibilityState={{ selected: themePreference === value }}
-            >
-              <Text
-                style={[
-                  styles.langText,
-                  themePreference === value && styles.langTextActive,
-                ]}
-              >
-                {value === 'system'
-                  ? t('settings.themeSystem')
-                  : value === 'light'
-                    ? t('settings.themeLight')
-                    : t('settings.themeDark')}
+      {/* ── Profile Card ── */}
+      {user && (
+        <Card style={styles.profileCard}>
+          <View style={styles.avatarContainer}>
+            {user.photoUrl ? (
+              <Image
+                source={{ uri: user.photoUrl }}
+                style={styles.avatarImage}
+                accessibilityLabel={user.name ?? user.email}
+              />
+            ) : (
+              <Text style={styles.avatarInitials}>
+                {getInitials(user.name, user.email)}
               </Text>
-            </Pressable>
-          ))}
+            )}
+          </View>
+          <Text style={styles.profileName}>{user.name ?? user.email}</Text>
+          <Text style={styles.profileEmail}>{user.email}</Text>
+          <View style={styles.roleBadge}>
+            <Ionicons name={getRoleIcon(user.role)} size={14} color={theme.colors.primary} />
+            <Text style={styles.roleBadgeText}>{getRoleLabel(user.role, t)}</Text>
+          </View>
+        </Card>
+      )}
+
+      {/* ── Preferences Section ── */}
+      <View style={styles.sectionHeader}>
+        <Ionicons name="options-outline" size={16} color={theme.colors.textMuted} />
+        <Text style={styles.sectionTitle}>{t('settings.preferences')}</Text>
+      </View>
+      <Card style={styles.settingsCard}>
+        {/* Language */}
+        <View style={[styles.settingRow, styles.settingRowBorder]}>
+          <Text style={styles.settingLabel}>{t('settings.language')}</Text>
+          <SegmentedControl
+            options={languageOptions}
+            selectedValue={currentLng}
+            onSelect={setLanguage}
+            accessibilityLabel={t('settings.language')}
+          />
         </View>
-      </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('settings.countProductSort')}</Text>
-        <View style={styles.row}>
-          <Pressable
-            style={[styles.langButton, productSort === ProductSortOrder.NOME && styles.langButtonActive]}
-            onPress={() => setProductSortOrder(ProductSortOrder.NOME)}
-            accessibilityRole="button"
-            accessibilityLabel={t('settings.sortByName')}
-            accessibilityState={{ selected: productSort === ProductSortOrder.NOME }}
-          >
-            <Text style={[styles.langText, productSort === ProductSortOrder.NOME && styles.langTextActive]}>
-              {t('settings.sortByName')}
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.langButton, productSort === ProductSortOrder.CODIGO && styles.langButtonActive]}
-            onPress={() => setProductSortOrder(ProductSortOrder.CODIGO)}
-            accessibilityRole="button"
-            accessibilityLabel={t('settings.sortByCode')}
-            accessibilityState={{ selected: productSort === ProductSortOrder.CODIGO }}
-          >
-            <Text style={[styles.langText, productSort === ProductSortOrder.CODIGO && styles.langTextActive]}>
-              {t('settings.sortByCode')}
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.langButton, productSort === ProductSortOrder.VALOR && styles.langButtonActive]}
-            onPress={() => setProductSortOrder(ProductSortOrder.VALOR)}
-            accessibilityRole="button"
-            accessibilityLabel={t('settings.sortByValue')}
-            accessibilityState={{ selected: productSort === ProductSortOrder.VALOR }}
-          >
-            <Text style={[styles.langText, productSort === ProductSortOrder.VALOR && styles.langTextActive]}>
-              {t('settings.sortByValue')}
-            </Text>
-          </Pressable>
+        {/* Theme */}
+        <View style={styles.settingRow}>
+          <Text style={styles.settingLabel}>{t('settings.theme')}</Text>
+          <SegmentedControl
+            options={themeOptions}
+            selectedValue={themePreference}
+            onSelect={setThemePreference}
+            accessibilityLabel={t('settings.theme')}
+          />
         </View>
-      </View>
+      </Card>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('settings.account')}</Text>
-        {user && (
-          <Card>
-            <Text style={styles.accountName}>{user.name ?? user.email}</Text>
-            <Text style={styles.accountEmail}>{user.email}</Text>
-          </Card>
-        )}
+      {/* ── Counting Section ── */}
+      <View style={styles.sectionHeader}>
+        <Ionicons name="clipboard-outline" size={16} color={theme.colors.textMuted} />
+        <Text style={styles.sectionTitle}>{t('settings.counting')}</Text>
       </View>
+      <Card style={styles.settingsCard}>
+        {/* Product sort order */}
+        <View style={[styles.settingRow, styles.settingRowBorder]}>
+          <Text style={styles.settingLabel}>{t('settings.countProductSort')}</Text>
+          <SegmentedControl
+            options={sortOptions}
+            selectedValue={productSort}
+            onSelect={setProductSortOrder}
+            accessibilityLabel={t('settings.countProductSort')}
+          />
+        </View>
 
-      <View style={styles.buttons}>
-        <Button onPress={handleLogout} variant="outline" fullWidth accessibilityLabel={t('common.logout')}>
+        {/* Blind count */}
+        <View style={styles.settingRow}>
+          <Text style={styles.settingLabel}>{t('settings.blindCount')}</Text>
+          <Text style={styles.settingDescription}>
+            {t('settings.blindCountDescription')}
+          </Text>
+          <View style={!canChangeBlindCount ? styles.disabledOverlay : undefined}>
+            <SegmentedControl
+              options={blindCountOptions}
+              selectedValue={blindCount ? 'yes' : 'no'}
+              onSelect={toggleBlindCount}
+              disabled={!canChangeBlindCount}
+              accessibilityLabel={t('settings.blindCount')}
+            />
+          </View>
+          {!canChangeBlindCount && (
+            <Text style={styles.noPermissionHint}>{t('settings.noPermission')}</Text>
+          )}
+        </View>
+      </Card>
+
+      {/* ── Footer: Logout + Version ── */}
+      <View style={styles.footer}>
+        <Logo size={32} showWordmark accessibilityLabel="e-stok" />
+        <Button
+          onPress={handleLogout}
+          variant="outline"
+          fullWidth
+          accessibilityLabel={t('common.logout')}
+          style={styles.logoutButton}
+        >
           {t('common.logout')}
         </Button>
+        <Text style={styles.versionText}>
+          {t('settings.version', { version: APP_VERSION })}
+        </Text>
       </View>
     </ScrollView>
   );

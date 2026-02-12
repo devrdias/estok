@@ -1,8 +1,19 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Modal, Platform } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import React, { useMemo, useState, useCallback } from 'react';
+import { View, Text, Pressable, StyleSheet, Modal } from 'react-native';
+import DateTimePicker from 'react-native-ui-datepicker';
+import type { DateType } from 'react-native-ui-datepicker';
 import { useTheme } from '@/shared/config';
 import { isoToDisplayDate } from '@/shared/config';
+
+/** Format a DateType (dayjs-compatible) to YYYY-MM-DD string. */
+function toIsoDate(date: DateType): string {
+  if (!date) return '';
+  const d = new Date(date as string | number | Date);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 export interface DatePickerFieldProps {
   /** Current value: ISO date string (YYYY-MM-DD) or empty. */
@@ -16,8 +27,19 @@ export interface DatePickerFieldProps {
 }
 
 /**
- * Date field that opens the native calendar/date picker on press.
- * Uses @react-native-community/datetimepicker; theme-aware.
+ * Date field that opens a calendar modal on press. Theme-aware.
+ *
+ * Uses `react-native-ui-datepicker` — a pure-JS calendar component that works
+ * on **Android, iOS, and Web** without platform-specific workarounds.
+ *
+ * @example
+ * ```tsx
+ * <DatePickerField
+ *   value={filterDate}
+ *   onChange={setFilterDate}
+ *   placeholder="Selecione a data"
+ * />
+ * ```
  */
 export function DatePickerField({
   value,
@@ -29,15 +51,25 @@ export function DatePickerField({
   const theme = useTheme();
   const [showPicker, setShowPicker] = useState(false);
 
-  const pickerValue = useMemo(() => {
-    if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      const [y, m, d] = value.split('-').map(Number);
-      return new Date(y, (m ?? 1) - 1, d ?? 1);
-    }
-    return new Date();
+  /** The date shown in the calendar. Falls back to today when value is empty. */
+  const pickerDate: DateType = useMemo(() => {
+    if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+    return undefined;
   }, [value]);
 
   const displayText = value ? isoToDisplayDate(value) : '';
+
+  /** When a day is tapped, commit it immediately and close the modal. */
+  const handleDateChange = useCallback(
+    ({ date }: { date: DateType }) => {
+      const iso = toIsoDate(date);
+      if (iso) {
+        onChange(iso);
+        setShowPicker(false);
+      }
+    },
+    [onChange]
+  );
 
   const styles = useMemo(
     () =>
@@ -72,40 +104,56 @@ export function DatePickerField({
           borderTopRightRadius: theme.radius.xl,
           paddingBottom: theme.spacing.lg,
         },
-        doneRow: {
+        headerRow: {
           flexDirection: 'row',
-          justifyContent: 'flex-end',
+          justifyContent: 'space-between',
+          alignItems: 'center',
           paddingHorizontal: theme.spacing.lg,
           paddingVertical: theme.spacing.sm,
           borderBottomWidth: 1,
           borderBottomColor: theme.colors.border,
         },
-        doneButton: {
+        clearButton: {
           paddingVertical: theme.spacing.sm,
           paddingHorizontal: theme.spacing.md,
         },
-        doneText: {
+        clearText: {
           ...theme.typography.body,
           fontWeight: '600',
-          color: theme.colors.primary,
+          color: theme.colors.danger ?? '#EF4444',
+        },
+        cancelButton: {
+          paddingVertical: theme.spacing.sm,
+          paddingHorizontal: theme.spacing.md,
+        },
+        cancelText: {
+          ...theme.typography.body,
+          fontWeight: '600',
+          color: theme.colors.textMuted,
+        },
+        calendarContainer: {
+          paddingHorizontal: theme.spacing.md,
+          paddingTop: theme.spacing.sm,
         },
       }),
     [theme]
   );
 
-  const handlePickerChange = (
-    event: { type: string },
-    selectedDate: Date | undefined
-  ) => {
-    if (Platform.OS === 'android') setShowPicker(false);
-    if (event.type === 'set' && selectedDate) {
-      onChange(selectedDate.toISOString().slice(0, 10));
-    }
-  };
-
-  const handleDone = () => {
-    setShowPicker(false);
-  };
+  /** Calendar style overrides that match the app theme. */
+  const calendarStyles = useMemo(
+    () => ({
+      selected: { backgroundColor: theme.colors.primary },
+      selected_label: { color: '#FFFFFF' },
+      today: { borderColor: theme.colors.primary, borderWidth: 1 },
+      today_label: { color: theme.colors.primary },
+      day_label: { color: theme.colors.text },
+      header: { color: theme.colors.text },
+      month_label: { color: theme.colors.text, fontWeight: '600' as const },
+      year_label: { color: theme.colors.text, fontWeight: '600' as const },
+      weekday_label: { color: theme.colors.textMuted },
+    }),
+    [theme]
+  );
 
   return (
     <>
@@ -120,59 +168,45 @@ export function DatePickerField({
         </Text>
       </Pressable>
 
-      {showPicker && Platform.OS === 'android' && (
-        <DateTimePicker
-          value={pickerValue}
-          mode="date"
-          display="calendar"
-          onChange={handlePickerChange}
-        />
-      )}
+      <Modal visible={showPicker} transparent animationType="slide">
+        <Pressable style={styles.modalOverlay} onPress={() => setShowPicker(false)}>
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+            {/* Header with Clear + Close actions */}
+            <View style={styles.headerRow}>
+              <Pressable
+                onPress={() => {
+                  onChange('');
+                  setShowPicker(false);
+                }}
+                style={styles.clearButton}
+                accessibilityRole="button"
+                accessibilityLabel="Limpar data"
+              >
+                <Text style={styles.clearText}>Limpar</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setShowPicker(false)}
+                style={styles.cancelButton}
+                accessibilityRole="button"
+                accessibilityLabel="Fechar"
+              >
+                <Text style={styles.cancelText}>Fechar</Text>
+              </Pressable>
+            </View>
 
-      {showPicker && Platform.OS === 'ios' && (
-        <Modal visible transparent animationType="slide">
-          <Pressable style={styles.modalOverlay} onPress={handleDone}>
-            <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-              <View style={styles.doneRow}>
-                <Pressable
-                  onPress={handleDone}
-                  style={styles.doneButton}
-                  accessibilityRole="button"
-                  accessibilityLabel="Concluído"
-                >
-                  <Text style={styles.doneText}>Concluído</Text>
-                </Pressable>
-              </View>
+            {/* Calendar */}
+            <View style={styles.calendarContainer}>
               <DateTimePicker
-                value={pickerValue}
-                mode="date"
-                display="spinner"
-                onChange={handlePickerChange}
-                locale="pt-BR"
+                mode="single"
+                date={pickerDate}
+                onChange={handleDateChange}
+                locale="pt"
+                styles={calendarStyles}
               />
-            </Pressable>
+            </View>
           </Pressable>
-        </Modal>
-      )}
-
-      {showPicker && Platform.OS === 'web' && (
-        <Modal visible transparent animationType="slide">
-          <Pressable style={styles.modalOverlay} onPress={handleDone}>
-            <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-              <View style={styles.doneRow}>
-                <Pressable onPress={handleDone} style={styles.doneButton} accessibilityRole="button">
-                  <Text style={styles.doneText}>Concluído</Text>
-                </Pressable>
-              </View>
-              <DateTimePicker
-                value={pickerValue}
-                mode="date"
-                onChange={handlePickerChange}
-              />
-            </Pressable>
-          </Pressable>
-        </Modal>
-      )}
+        </Pressable>
+      </Modal>
     </>
   );
 }

@@ -5,6 +5,7 @@ import * as SecureStore from 'expo-secure-store';
 
 const PRODUCT_SORT_ORDER_KEY = 'app_count_product_sort';
 const THEME_PREFERENCE_KEY = 'app_theme_preference';
+const BLIND_COUNT_KEY = 'app_blind_count';
 
 /** User preference: follow system, or force light/dark. */
 export type ThemePreferenceValue = 'system' | 'light' | 'dark';
@@ -54,6 +55,37 @@ export async function getStoredProductSortOrder(): Promise<ProductSortOrderValue
 export async function setStoredProductSortOrder(order: ProductSortOrderValue): Promise<void> {
   try {
     await SecureStore.setItemAsync(PRODUCT_SORT_ORDER_KEY, order);
+  } catch {
+    // ignore
+  }
+}
+
+// --- Contagem às cegas (blind count): hides system quantity during count ---
+
+const DEFAULT_BLIND_COUNT = false;
+
+/**
+ * Read persisted blind-count preference.
+ * When enabled, the system quantity is hidden during counting.
+ */
+export async function getStoredBlindCount(): Promise<boolean> {
+  try {
+    const value = await SecureStore.getItemAsync(BLIND_COUNT_KEY);
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+  } catch {
+    // ignore
+  }
+  return DEFAULT_BLIND_COUNT;
+}
+
+/**
+ * Persist blind-count preference.
+ * @param enabled - Whether blind count mode is active.
+ */
+export async function setStoredBlindCount(enabled: boolean): Promise<void> {
+  try {
+    await SecureStore.setItemAsync(BLIND_COUNT_KEY, String(enabled));
   } catch {
     // ignore
   }

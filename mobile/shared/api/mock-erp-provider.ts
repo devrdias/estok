@@ -37,12 +37,16 @@ function seedInitialCounts() {
       id,
       estoqueId,
       valorAConsiderar: 'VENDA',
+      modalidadeContagem: i === 0 ? 'LOJA_FUNCIONANDO' : 'LOJA_FECHADA',
       dataInicio: dataInicio.toISOString(),
       status: i === 0 ? 'EM_ANDAMENTO' : 'FINALIZADO',
       dataFinalizacao,
       criadoEm: dataInicio.toISOString(),
+      criadoPor: i === 0 ? 'mock-employee-1' : 'mock-manager-1',
+      criadoPorNome: i === 0 ? 'Rafael Funcionário' : 'Claudio Gerente',
       ...(i === 1 && {
-        finalizadoPor: 'mock-user',
+        finalizadoPor: 'mock-manager-1',
+        finalizadoPorNome: 'Claudio Gerente',
         finalizadoEm: dataFinalizacao,
       }),
     };
@@ -62,9 +66,14 @@ function createMockCount(params: CreateInventoryParams): Contagem {
     estoqueId: params.estoqueId,
     valorAConsiderar: params.valorAConsiderar,
     ...(params.estruturaMercadologicaId && { estruturaMercadologicaId: params.estruturaMercadologicaId }),
+    ...(params.estruturaMercadologicaIds &&
+      params.estruturaMercadologicaIds.length > 0 && { estruturaMercadologicaIds: params.estruturaMercadologicaIds }),
+    ...(params.modalidadeContagem && { modalidadeContagem: params.modalidadeContagem }),
     dataInicio: now,
     status: 'EM_ANDAMENTO',
     criadoEm: now,
+    criadoPor: 'mock-employee-1',
+    criadoPorNome: 'Rafael Funcionário',
   };
   mockInventories.set(id, contagem);
   const stock = MOCK_STOCKS.find((s) => s.id === params.estoqueId);
@@ -115,7 +124,8 @@ export const mockErpProvider: ErpProvider = {
     if (!c) throw new Error('Contagem não encontrada');
     const updated = { ...c, ...patch };
     if (patch.status === 'FINALIZADO') {
-      updated.finalizadoPor = updated.finalizadoPor ?? 'mock-user';
+      updated.finalizadoPor = updated.finalizadoPor ?? 'mock-manager-1';
+      updated.finalizadoPorNome = updated.finalizadoPorNome ?? 'Claudio Gerente';
       updated.finalizadoEm = updated.finalizadoEm ?? patch.dataFinalizacao ?? new Date().toISOString();
     }
     mockInventories.set(id, updated);

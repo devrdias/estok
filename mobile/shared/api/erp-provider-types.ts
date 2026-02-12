@@ -31,7 +31,12 @@ export interface EstruturaMercadologica {
 export interface CreateInventoryParams {
   estoqueId: string;
   valorAConsiderar: 'VENDA' | 'CUSTO';
+  /** @deprecated Use estruturaMercadologicaIds for multi-select. Kept for backwards compatibility. */
   estruturaMercadologicaId?: string;
+  /** Selected product structure IDs (multi-select). Empty array or undefined = all categories. */
+  estruturaMercadologicaIds?: string[];
+  /** Counting mode: store closed or store open during the count. */
+  modalidadeContagem?: 'LOJA_FECHADA' | 'LOJA_FUNCIONANDO';
 }
 
 /** Result of pre-register checks (US-4.4 PDV online, US-4.5 transferências pendentes). */

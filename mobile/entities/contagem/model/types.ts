@@ -16,18 +16,33 @@ export const ValorAConsiderar = {
 
 export type ValorAConsiderarValue = (typeof ValorAConsiderar)[keyof typeof ValorAConsiderar];
 
+export const ModalidadeContagem = {
+  LOJA_FECHADA: 'LOJA_FECHADA',
+  LOJA_FUNCIONANDO: 'LOJA_FUNCIONANDO',
+} as const;
+
+export type ModalidadeContagemValue = (typeof ModalidadeContagem)[keyof typeof ModalidadeContagem];
+
 export interface Contagem {
   id: string;
   estoqueId: string;
   estruturaMercadologicaId?: string;
+  /** Multi-select: IDs of selected product structures. Empty = all. */
+  estruturaMercadologicaIds?: string[];
   valorAConsiderar: ValorAConsiderarValue;
+  /** Counting mode: store closed or store open. */
+  modalidadeContagem?: ModalidadeContagemValue;
   dataInicio: string;
   dataFinalizacao?: string;
   status: CountStatusValue;
   criadoEm: string;
   criadoPor?: string;
+  /** Display name of the user who created (started) the count. */
+  criadoPorNome?: string;
   /** Fase 2 auditoria: quem e quando finalizou. */
   finalizadoPor?: string;
+  /** Display name of the user who finalized the count. */
+  finalizadoPorNome?: string;
   finalizadoEm?: string;
   /** Fase 2 auditoria: soft-delete — quem e quando excluiu. */
   excluidoPor?: string;

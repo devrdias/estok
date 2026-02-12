@@ -13,17 +13,17 @@ function wrap(ui: React.ReactElement) {
 describe('Logo', () => {
   it('renders without wordmark by default', () => {
     render(wrap(<Logo />));
-    expect(screen.queryByText('Balanço')).toBeNull();
+    expect(screen.queryByText('e-stok')).toBeNull();
   });
 
   it('renders wordmark when showWordmark is true', () => {
     render(wrap(<Logo showWordmark />));
-    expect(screen.getByText('Balanço')).toBeOnTheScreen();
+    expect(screen.getByText('e-stok')).toBeOnTheScreen();
   });
 
   it('uses default accessibility label', () => {
     const { getByLabelText } = render(wrap(<Logo />));
-    expect(getByLabelText('Balanço')).toBeOnTheScreen();
+    expect(getByLabelText('e-stok')).toBeOnTheScreen();
   });
 
   it('uses custom accessibility label when provided', () => {
@@ -33,6 +33,6 @@ describe('Logo', () => {
 
   it('renders with custom size without crashing', () => {
     const { getByLabelText } = render(wrap(<Logo size={64} />));
-    expect(getByLabelText('Balanço')).toBeOnTheScreen();
+    expect(getByLabelText('e-stok')).toBeOnTheScreen();
   });
 });

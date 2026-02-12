@@ -8,6 +8,8 @@ export {
   getStoredProductSortOrder,
   setStoredProductSortOrder,
   ProductSortOrder,
+  getStoredBlindCount,
+  setStoredBlindCount,
   getStoredCountListFilters,
   setStoredCountListFilters,
   getStoredThemePreference,
