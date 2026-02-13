@@ -19,3 +19,5 @@ export { InfoModal } from './InfoModal';
 export type { InfoModalProps } from './InfoModal';
 export { SegmentedControl } from './SegmentedControl';
 export type { SegmentedControlProps, SegmentedControlOption } from './SegmentedControl';
+export { AlertProvider, useAlert } from './AlertDialog';
+export type { AlertButton, AlertOptions } from './AlertDialog';

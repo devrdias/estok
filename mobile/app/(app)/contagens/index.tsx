@@ -6,7 +6,6 @@ import {
   StyleSheet,
   SectionList,
   ActivityIndicator,
-  Alert,
   RefreshControl,
   LayoutAnimation,
   Platform,
@@ -23,7 +22,7 @@ import type { Estoque } from '@/entities/estoque/model/types';
 import { usePermissions, useAuth, UserRole } from '@/features/auth/model';
 import { useTheme, setStoredCountListFilters } from '@/shared/config';
 import type { Theme } from '@/shared/config/theme';
-import { SelectModal, DatePickerField, type SelectOption } from '@/shared/ui';
+import { SelectModal, DatePickerField, useAlert, type SelectOption } from '@/shared/ui';
 
 /** Enable LayoutAnimation on Android. */
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -100,6 +99,7 @@ export default function ContagensListScreen() {
   const erp = useErpProvider();
   const { user } = useAuth();
   const { canDeleteCount } = usePermissions();
+  const { showAlert } = useAlert();
 
   /** Managers and admins see which employee is counting on each card. */
   const isManagerView = user?.role === UserRole.MANAGER || user?.role === UserRole.ADMIN;
@@ -284,7 +284,7 @@ export default function ContagensListScreen() {
   const handleContinue = (id: string) => router.push(`/(app)/contagens/${id}` as never);
   const handleVerify = (id: string) => router.push(`/(app)/contagens/${id}` as never);
   const handleDelete = (id: string) => {
-    Alert.alert(
+    showAlert(
       t('counts.deleteConfirmTitle'),
       t('counts.deleteConfirmMessage'),
       [
@@ -298,7 +298,7 @@ export default function ContagensListScreen() {
               const c = await load();
               if (c && c.length > 0) loadProgress(c);
             } catch (error) {
-              Alert.alert(
+              showAlert(
                 t('counts.deleteErrorTitle'),
                 error instanceof Error ? error.message : t('counts.deleteErrorMessage'),
               );

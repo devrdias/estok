@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import type { Contagem } from '@/entities/contagem/model/types';
 import type { Estoque } from '@/entities/estoque/model/types';
 import type {
@@ -7,6 +8,8 @@ import type {
   InventoryItem,
   EstruturaMercadologica,
 } from './erp-provider-types';
+
+// ─── Static reference data ───────────────────────────────────
 
 const MOCK_STOCKS: Estoque[] = [
   { id: 's1', nome: 'Estoque 1', ativo: true },
@@ -20,9 +23,81 @@ const MOCK_ESTRUTURAS: EstruturaMercadologica[] = [
   { id: 'cat3', nome: 'Limpeza' },
 ];
 
+// ─── Persistence helpers (survive web refresh) ───────────────
+
+const STORAGE_KEY_INVENTORIES = 'mock_inventories';
+const STORAGE_KEY_ITEMS = 'mock_inventory_items';
+const STORAGE_KEY_COUNTER = 'mock_count_id';
+
+/** Read JSON from localStorage (web only, no-op on native). */
+function readStorage<T>(key: string): T | null {
+  if (Platform.OS !== 'web') return null;
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Write JSON to localStorage (web only, no-op on native). */
+function writeStorage(key: string, value: unknown): void {
+  if (Platform.OS !== 'web') return;
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // storage full or unavailable — ignore
+  }
+}
+
+/** Serialize Maps to a plain object for JSON storage. */
+function serializeMaps(): void {
+  const inventoriesObj: Record<string, Contagem> = {};
+  mockInventories.forEach((v, k) => { inventoriesObj[k] = v; });
+
+  const itemsObj: Record<string, InventoryItem[]> = {};
+  mockInventoryItems.forEach((v, k) => { itemsObj[k] = v; });
+
+  writeStorage(STORAGE_KEY_INVENTORIES, inventoriesObj);
+  writeStorage(STORAGE_KEY_ITEMS, itemsObj);
+  writeStorage(STORAGE_KEY_COUNTER, mockCountId);
+}
+
+/** Restore Maps from localStorage. Returns true if data was restored. */
+function restoreFromStorage(): boolean {
+  const inventoriesObj = readStorage<Record<string, Contagem>>(STORAGE_KEY_INVENTORIES);
+  const itemsObj = readStorage<Record<string, InventoryItem[]>>(STORAGE_KEY_ITEMS);
+  const counter = readStorage<number>(STORAGE_KEY_COUNTER);
+
+  if (!inventoriesObj || Object.keys(inventoriesObj).length === 0) return false;
+
+  mockInventories.clear();
+  for (const [k, v] of Object.entries(inventoriesObj)) {
+    mockInventories.set(k, v);
+  }
+
+  mockInventoryItems.clear();
+  if (itemsObj) {
+    for (const [k, v] of Object.entries(itemsObj)) {
+      mockInventoryItems.set(k, v);
+    }
+  }
+
+  if (counter != null) mockCountId = counter;
+
+  return true;
+}
+
+// ─── In-memory state ─────────────────────────────────────────
+
 let mockCountId = 1;
 const mockInventories: Map<string, Contagem> = new Map();
 const mockInventoryItems: Map<string, InventoryItem[]> = new Map();
+
+/** Try to restore persisted state on module load. */
+const _restoredFromStorage = restoreFromStorage();
+
+// ─── Seed data (only when nothing persisted) ─────────────────
 
 function seedInitialCounts() {
   if (mockInventories.size > 0) return;
@@ -56,6 +131,7 @@ function seedInitialCounts() {
       { id: `i-${id}-2`, produtoId: '3401', produtoNome: 'Produto B', valorUnitario: 35, qtdSistema: 2 },
     ]);
   });
+  serializeMaps();
 }
 
 function createMockCount(params: CreateInventoryParams): Contagem {
@@ -76,15 +152,17 @@ function createMockCount(params: CreateInventoryParams): Contagem {
     criadoPorNome: 'Rafael Funcionário',
   };
   mockInventories.set(id, contagem);
-  const stock = MOCK_STOCKS.find((s) => s.id === params.estoqueId);
   const items: InventoryItem[] = [
     { id: 'i1', produtoId: '9602', produtoNome: 'Produto A', valorUnitario: 10, qtdSistema: 5 },
     { id: 'i2', produtoId: '3401', produtoNome: 'Produto B', valorUnitario: 35, qtdSistema: 2 },
     { id: 'i3', produtoId: '2022', produtoNome: 'Produto C', valorUnitario: 235, qtdSistema: 1 },
   ];
   mockInventoryItems.set(id, items);
+  serializeMaps();
   return contagem;
 }
+
+// ─── Provider implementation ─────────────────────────────────
 
 export const mockErpProvider: ErpProvider = {
   async listStocks() {
@@ -113,6 +191,7 @@ export const mockErpProvider: ErpProvider = {
     return list;
   },
   async getInventory(id: string) {
+    seedInitialCounts();
     const c = mockInventories.get(id);
     return c && !c.excluidoEm ? c : null;
   },
@@ -129,6 +208,7 @@ export const mockErpProvider: ErpProvider = {
       updated.finalizadoEm = updated.finalizadoEm ?? patch.dataFinalizacao ?? new Date().toISOString();
     }
     mockInventories.set(id, updated);
+    serializeMaps();
     return updated;
   },
   async deleteInventory(id: string) {
@@ -137,8 +217,10 @@ export const mockErpProvider: ErpProvider = {
     c.excluidoPor = 'mock-user';
     c.excluidoEm = new Date().toISOString();
     mockInventoryItems.delete(id);
+    serializeMaps();
   },
   async listInventoryItems(inventoryId: string) {
+    seedInitialCounts();
     return [...(mockInventoryItems.get(inventoryId) ?? [])];
   },
   async registerCountedQuantity(inventoryId: string, productId: string, qtdContada: number) {
@@ -147,6 +229,7 @@ export const mockErpProvider: ErpProvider = {
     if (!item) return { success: false, code: 'NOT_FOUND', message: 'Produto não encontrado' };
     item.qtdContada = qtdContada;
     item.dataHoraContagem = new Date().toISOString();
+    serializeMaps();
     return { success: true };
   },
   async checkPdvOnline(_inventoryId: string) {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useErpProvider } from '@/shared/api';
@@ -8,7 +8,7 @@ import type { Estoque } from '@/entities/estoque/model/types';
 import { ValorAConsiderar, ModalidadeContagem } from '@/entities/contagem/model/types';
 import type { ModalidadeContagemValue } from '@/entities/contagem/model/types';
 import { useTheme } from '@/shared/config';
-import { Button, SelectModal, MultiSelectModal, InfoModal, type SelectOption } from '@/shared/ui';
+import { Button, SelectModal, MultiSelectModal, InfoModal, useAlert, type SelectOption } from '@/shared/ui';
 
 /**
  * Nova contagem: Estoque (dropdown/modal), Valor a considerar (chips), Criar.
@@ -18,6 +18,7 @@ export default function NovaContagemScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const erp = useErpProvider();
+  const { showAlert } = useAlert();
   const [stocks, setStocks] = useState<Estoque[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -132,7 +133,7 @@ export default function NovaContagemScreen() {
       });
       router.replace(`/(app)/contagens/${c.id}` as any);
     } catch (error) {
-      Alert.alert(
+      showAlert(
         t('newCount.createErrorTitle'),
         error instanceof Error ? error.message : t('newCount.createErrorMessage'),
       );

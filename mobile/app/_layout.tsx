@@ -6,6 +6,7 @@ import i18n from '@/shared/config/i18n';
 import { ThemeProvider, useColorSchemeTheme } from '@/shared/config';
 import { AuthProvider } from '@/features/auth/model';
 import { ErpProviderContextProvider } from '@/shared/api';
+import { AlertProvider } from '@/shared/ui';
 
 initI18n();
 
@@ -36,13 +37,15 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <ThemedStatusBar />
-      <LanguageRestorer>
-        <AuthProvider>
-          <ErpProviderContextProvider>
-            <Stack screenOptions={{ headerShown: false }} />
-          </ErpProviderContextProvider>
-        </AuthProvider>
-      </LanguageRestorer>
+      <AlertProvider>
+        <LanguageRestorer>
+          <AuthProvider>
+            <ErpProviderContextProvider>
+              <Stack screenOptions={{ headerShown: false }} />
+            </ErpProviderContextProvider>
+          </AuthProvider>
+        </LanguageRestorer>
+      </AlertProvider>
     </ThemeProvider>
   );
 }
