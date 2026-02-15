@@ -1,25 +1,42 @@
 /**
  * Unit tests for the mock ERP provider. Validates the contract so that
  * swapping to another provider (e.g. CPlug) keeps app behavior consistent.
+ *
+ * Since the mock now uses dynamic generated data (mock-store-generator),
+ * tests assert on structural properties rather than hardcoded IDs/names.
  */
 import { CountStatus } from '../../../entities/contagem/model/types';
-import { mockErpProvider } from '../mock-erp-provider';
+import { mockErpProvider, resetMockData } from '../mock-erp-provider';
+import { getMockConfig } from '../mock-config';
+
+/** Reset mock data before each test to guarantee clean state. */
+beforeEach(() => {
+  resetMockData();
+});
 
 describe('mockErpProvider', () => {
   describe('listStocks', () => {
-    it('returns all mock stocks', async () => {
+    it('returns generated stocks with expected structure', async () => {
       const stocks = await mockErpProvider.listStocks();
-      expect(stocks).toHaveLength(3);
-      expect(stocks.map((s) => s.id)).toEqual(['s1', 's2', 's3']);
-      expect(stocks[0].nome).toBe('Estoque 1');
+      expect(stocks.length).toBeGreaterThanOrEqual(1);
+      // Every stock must have id, nome, ativo
+      for (const stock of stocks) {
+        expect(stock.id).toBeDefined();
+        expect(stock.nome).toBeDefined();
+        expect(stock.ativo).toBe(true);
+      }
+      // IDs follow the est-N pattern from the generator
+      expect(stocks[0].id).toMatch(/^est-\d+$/);
     });
   });
 
   describe('getStock', () => {
     it('returns stock by id', async () => {
-      const stock = await mockErpProvider.getStock('s1');
+      const stocks = await mockErpProvider.listStocks();
+      const firstId = stocks[0].id;
+      const stock = await mockErpProvider.getStock(firstId);
       expect(stock).not.toBeNull();
-      expect(stock?.nome).toBe('Estoque 1');
+      expect(stock?.id).toBe(firstId);
     });
 
     it('returns null for unknown id', async () => {
@@ -29,7 +46,7 @@ describe('mockErpProvider', () => {
   });
 
   describe('listInventories', () => {
-    it('returns seeded inventories and applies sort by criadoEm desc', async () => {
+    it('returns seeded inventories sorted by criadoEm desc', async () => {
       const list = await mockErpProvider.listInventories({});
       expect(list.length).toBeGreaterThanOrEqual(2);
       for (let i = 1; i < list.length; i++) {
@@ -40,8 +57,10 @@ describe('mockErpProvider', () => {
     });
 
     it('filters by estoqueId', async () => {
-      const list = await mockErpProvider.listInventories({ estoqueId: 's1' });
-      expect(list.every((c) => c.estoqueId === 's1')).toBe(true);
+      const stocks = await mockErpProvider.listStocks();
+      const firstStockId = stocks[0].id;
+      const list = await mockErpProvider.listInventories({ estoqueId: firstStockId });
+      expect(list.every((c) => c.estoqueId === firstStockId)).toBe(true);
     });
 
     it('filters by status', async () => {
@@ -54,24 +73,44 @@ describe('mockErpProvider', () => {
 
   describe('createInventory', () => {
     it('creates a new inventory and returns it', async () => {
+      const stocks = await mockErpProvider.listStocks();
+      const stockId = stocks[0].id;
       const created = await mockErpProvider.createInventory({
-        estoqueId: 's1',
+        estoqueId: stockId,
         valorAConsiderar: 'CUSTO',
       });
       expect(created.id).toBeDefined();
-      expect(created.estoqueId).toBe('s1');
+      expect(created.estoqueId).toBe(stockId);
       expect(created.valorAConsiderar).toBe('CUSTO');
       expect(created.status).toBe(CountStatus.EM_ANDAMENTO);
 
       const found = await mockErpProvider.getInventory(created.id);
       expect(found).toEqual(created);
     });
+
+    it('generates inventory items from the product catalog', async () => {
+      const stocks = await mockErpProvider.listStocks();
+      const created = await mockErpProvider.createInventory({
+        estoqueId: stocks[0].id,
+        valorAConsiderar: 'VENDA',
+      });
+      const items = await mockErpProvider.listInventoryItems(created.id);
+      const config = getMockConfig();
+      expect(items).toHaveLength(config.productCount);
+      // Each item should have realistic product data from the catalog
+      for (const item of items) {
+        expect(item.produtoNome).toBeDefined();
+        expect(item.valorUnitario).toBeGreaterThan(0);
+        expect(item.qtdSistema).toBeGreaterThanOrEqual(1);
+      }
+    });
   });
 
   describe('updateInventory', () => {
     it('updates status and dataFinalizacao', async () => {
+      const stocks = await mockErpProvider.listStocks();
       const created = await mockErpProvider.createInventory({
-        estoqueId: 's2',
+        estoqueId: stocks[0].id,
         valorAConsiderar: 'VENDA',
       });
       const updated = await mockErpProvider.updateInventory(created.id, {
@@ -138,11 +177,16 @@ describe('mockErpProvider', () => {
   });
 
   describe('deleteInventory', () => {
-    it('removes inventory and its items', async () => {
+    it('soft-deletes inventory (hidden from list and get)', async () => {
+      const stocks = await mockErpProvider.listStocks();
       const created = await mockErpProvider.createInventory({
-        estoqueId: 's3',
+        estoqueId: stocks[0].id,
         valorAConsiderar: 'VENDA',
       });
+
+      const listBefore = await mockErpProvider.listInventories({});
+      expect(listBefore.some((c) => c.id === created.id)).toBe(true);
+
       await mockErpProvider.deleteInventory(created.id);
 
       const found = await mockErpProvider.getInventory(created.id);
@@ -154,8 +198,16 @@ describe('mockErpProvider', () => {
   });
 
   describe('checkPdvOnline (US-4.4)', () => {
-    it('returns ok: true in mock', async () => {
+    it('checks PDV status for the inventory stock', async () => {
       const result = await mockErpProvider.checkPdvOnline!('001');
+      // Result depends on PDV scenario config (mixed by default),
+      // so we only verify shape, not value
+      expect(result).toHaveProperty('ok');
+      expect(typeof result.ok).toBe('boolean');
+    });
+
+    it('returns ok: true for unknown inventory (no linked PDVs)', async () => {
+      const result = await mockErpProvider.checkPdvOnline!('nonexistent');
       expect(result.ok).toBe(true);
     });
   });
@@ -168,55 +220,74 @@ describe('mockErpProvider', () => {
   });
 
   describe('listEstruturasMercadologicas (Fase 2)', () => {
-    it('returns mock categories', async () => {
+    it('returns generated categories', async () => {
       const list = await mockErpProvider.listEstruturasMercadologicas!();
       expect(list.length).toBeGreaterThanOrEqual(1);
       expect(list[0]).toHaveProperty('id');
       expect(list[0]).toHaveProperty('nome');
+      // Category IDs follow the generator pattern
+      expect(list[0].id).toMatch(/^cat-/);
     });
   });
 
   describe('createInventory with estruturaMercadologicaId (Fase 2)', () => {
     it('stores estruturaMercadologicaId on contagem', async () => {
+      const stocks = await mockErpProvider.listStocks();
+      const categories = await mockErpProvider.listEstruturasMercadologicas!();
+      const catId = categories[0].id;
+
       const created = await mockErpProvider.createInventory({
-        estoqueId: 's1',
+        estoqueId: stocks[0].id,
         valorAConsiderar: 'CUSTO',
-        estruturaMercadologicaId: 'cat1',
+        estruturaMercadologicaId: catId,
       });
-      expect(created.estruturaMercadologicaId).toBe('cat1');
+      expect(created.estruturaMercadologicaId).toBe(catId);
       const found = await mockErpProvider.getInventory(created.id);
-      expect(found?.estruturaMercadologicaId).toBe('cat1');
+      expect(found?.estruturaMercadologicaId).toBe(catId);
     });
   });
 
   describe('auditoria finalizadoPor/finalizadoEm (Fase 2)', () => {
     it('sets finalizadoPor and finalizadoEm when finalizing', async () => {
+      const stocks = await mockErpProvider.listStocks();
       const created = await mockErpProvider.createInventory({
-        estoqueId: 's1',
+        estoqueId: stocks[0].id,
         valorAConsiderar: 'VENDA',
       });
       const updated = await mockErpProvider.updateInventory(created.id, {
         status: CountStatus.FINALIZADO,
         dataFinalizacao: new Date().toISOString(),
       });
-      expect(updated.finalizadoPor).toBe('mock-user');
+      expect(updated.finalizadoPor).toBeDefined();
       expect(updated.finalizadoEm).toBeDefined();
     });
   });
 
-  describe('auditoria excluídoPor/excluídoEm soft-delete (Fase 2)', () => {
-    it('marks contagem as excluded and hides from list and get', async () => {
-      const created = await mockErpProvider.createInventory({
-        estoqueId: 's2',
-        valorAConsiderar: 'VENDA',
-      });
-      const listBefore = await mockErpProvider.listInventories({});
-      expect(listBefore.some((c) => c.id === created.id)).toBe(true);
-      await mockErpProvider.deleteInventory(created.id);
-      const listAfter = await mockErpProvider.listInventories({});
-      expect(listAfter.some((c) => c.id === created.id)).toBe(false);
-      const found = await mockErpProvider.getInventory(created.id);
-      expect(found).toBeNull();
+  describe('PDV management', () => {
+    it('lists PDVs linked to generated stocks', async () => {
+      const pdvs = await mockErpProvider.listPdvs();
+      expect(pdvs.length).toBeGreaterThanOrEqual(1);
+      for (const pdv of pdvs) {
+        expect(pdv.id).toBeDefined();
+        expect(pdv.nome).toBeDefined();
+        expect(['ONLINE', 'OFFLINE']).toContain(pdv.status);
+        expect(pdv.estoqueId).toMatch(/^est-\d+$/);
+      }
+    });
+
+    it('filters PDVs by estoqueId', async () => {
+      const stocks = await mockErpProvider.listStocks();
+      const firstStockId = stocks[0].id;
+      const pdvs = await mockErpProvider.listPdvs({ estoqueId: firstStockId });
+      expect(pdvs.every((p) => p.estoqueId === firstStockId)).toBe(true);
+    });
+
+    it('toggles PDV status', async () => {
+      const pdvs = await mockErpProvider.listPdvs();
+      const pdv = pdvs[0];
+      const originalStatus = pdv.status;
+      const toggled = await mockErpProvider.togglePdvStatus(pdv.id);
+      expect(toggled.status).toBe(originalStatus === 'ONLINE' ? 'OFFLINE' : 'ONLINE');
     });
   });
 });

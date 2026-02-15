@@ -52,11 +52,27 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
+        name="pdvs"
+        options={{
+          title: t('pdvs.title'),
+          tabBarLabel: t('pdvs.tabLabel'),
+          tabBarIcon: ({ color, size }) => <Ionicons name="desktop-outline" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="configuracoes"
         options={{
           title: t('settings.title'),
           tabBarLabel: t('settings.title'),
           tabBarIcon: ({ color, size }) => <Ionicons name="settings" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="mock-config"
+        options={{
+          title: t('mockConfig.title'),
+          href: null,
+          tabBarIcon: ({ color, size }) => <Ionicons name="construct" size={size} color={color} />,
         }}
       />
     </Tabs>

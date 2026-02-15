@@ -18,7 +18,7 @@ export type ValorAConsiderarValue = (typeof ValorAConsiderar)[keyof typeof Valor
 
 export const ModalidadeContagem = {
   LOJA_FECHADA: 'LOJA_FECHADA',
-  LOJA_FUNCIONANDO: 'LOJA_FUNCIONANDO',
+  LOJA_ABERTA: 'LOJA_ABERTA',
 } as const;
 
 export type ModalidadeContagemValue = (typeof ModalidadeContagem)[keyof typeof ModalidadeContagem];

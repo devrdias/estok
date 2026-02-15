@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useErpProvider } from '@/shared/api';
 import type { InventoryItem } from '@/shared/api/erp-provider-types';
+import type { Pdv } from '@/entities/pdv/model/types';
 import { CountStatus } from '@/entities/contagem/model/types';
 import { usePermissions } from '@/features/auth/model';
 import {
@@ -46,8 +47,9 @@ export default function ContagemFatoScreen() {
   const { canFinalizeCount } = usePermissions();
   const { showAlert } = useAlert();
 
-  const [inventory, setInventory] = useState<{ status: string; dataInicio: string } | null>(null);
+  const [inventory, setInventory] = useState<{ status: string; dataInicio: string; estoqueId: string } | null>(null);
   const [items, setItems] = useState<InventoryItem[]>([]);
+  const [pdvs, setPdvs] = useState<Pdv[]>([]);
   const [loading, setLoading] = useState(true);
   const [finalizing, setFinalizing] = useState(false);
   const [secondChanceProductId, setSecondChanceProductId] = useState<string | null>(null);
@@ -70,7 +72,11 @@ export default function ContagemFatoScreen() {
     setLoading(true);
     try {
       const [inv, list] = await Promise.all([erp.getInventory(id), erp.listInventoryItems(id)]);
-      if (inv) setInventory({ status: inv.status, dataInicio: inv.dataInicio });
+      if (inv) {
+        setInventory({ status: inv.status, dataInicio: inv.dataInicio, estoqueId: inv.estoqueId });
+        // Fetch PDVs linked to this stock for status indicator
+        erp.listPdvs({ estoqueId: inv.estoqueId }).then(setPdvs).catch(() => setPdvs([]));
+      }
       setItems(list ?? []);
     } finally {
       setLoading(false);
@@ -96,6 +102,10 @@ export default function ContagemFatoScreen() {
       ? ((productsCounted / totalProducts) * 100) / daysSinceStart
       : 0;
 
+  const pdvsOnline = pdvs.filter((p) => p.status === 'ONLINE').length;
+  const pdvsOffline = pdvs.filter((p) => p.status === 'OFFLINE').length;
+  const hasOfflinePdvs = pdvsOffline > 0;
+
   // ─── Registration logic ────────────────────────────────────
 
   const doRegister = async (productId: string, qty: number) => {
@@ -114,23 +124,66 @@ export default function ContagemFatoScreen() {
     }
   };
 
-  const runPreRegisterChecks = async (productId: string): Promise<boolean> => {
-    if (!id) return false;
+  /**
+   * Attempt to reconnect all offline PDVs for this inventory's stock,
+   * refresh the local PDV list, then retry registration.
+   */
+  const reconnectPdvsAndRetry = async (onRetry: () => void) => {
+    const offlinePdvIds = pdvs.filter((p) => p.status === 'OFFLINE').map((p) => p.id);
+    try {
+      await Promise.all(offlinePdvIds.map((pdvId) => erp.togglePdvStatus(pdvId)));
+      // Refresh PDV list so the banner updates
+      if (inventory?.estoqueId) {
+        const refreshed = await erp.listPdvs({ estoqueId: inventory.estoqueId });
+        setPdvs(refreshed);
+      }
+    } catch {
+      // If toggle fails, the retry will re-check and show the alert again
+    }
+    onRetry();
+  };
+
+  /**
+   * Pre-register validation (US-4.4 & US-4.5).
+   * Returns 'pass' if all checks succeeded, or 'blocked' if the user
+   * was shown a blocking alert. The PDV-offline alert includes a
+   * "Conectar" shortcut to toggle offline PDVs and retry automatically.
+   */
+  const runPreRegisterChecks = async (
+    productId: string,
+    onRetry: () => void,
+  ): Promise<'pass' | 'blocked'> => {
+    if (!id) return 'blocked';
+
+    // Validation 1: PDV online check
     if (erp.checkPdvOnline) {
       const pdv = await erp.checkPdvOnline(id);
       if (!pdv.ok) {
-        showAlert(t('counts.pdvOfflineTitle'), pdv.message ?? t('counts.pdvOfflineMessage'));
-        return false;
+        showAlert(
+          t('counts.pdvOfflineTitle'),
+          pdv.message ?? t('counts.pdvOfflineMessage'),
+          [
+            { text: t('common.ok'), style: 'cancel' },
+            { text: t('counts.connectPdv'), onPress: () => reconnectPdvsAndRetry(onRetry) },
+          ],
+        );
+        return 'blocked';
       }
     }
+
+    // Validation 2: Pending stock transfers
     if (erp.checkTransferenciasPendentes) {
       const tr = await erp.checkTransferenciasPendentes(id, productId);
       if (!tr.ok) {
-        showAlert(t('counts.transferPendingTitle'), tr.message ?? t('counts.transferPendingMessage'));
-        return false;
+        showAlert(
+          t('counts.transferPendingTitle'),
+          tr.message ?? t('counts.transferPendingMessage'),
+        );
+        return 'blocked';
       }
     }
-    return true;
+
+    return 'pass';
   };
 
   const handleRegister = async (productId: string) => {
@@ -140,19 +193,33 @@ export default function ContagemFatoScreen() {
     const item = items.find((i) => i.produtoId === productId);
     if (!item) return;
 
-    const checksOk = await runPreRegisterChecks(productId);
-    if (!checksOk) return;
+    // Retry callback: re-runs the entire registration flow (preserves typed qty)
+    const result = await runPreRegisterChecks(productId, () => handleRegister(productId));
+    if (result === 'blocked') return;
 
-    if (blindCount) {
-      const isDivergence = qty !== item.qtdSistema;
-      const isSecondChance = secondChanceProductId === productId;
-      if (isDivergence && !isSecondChance) {
-        showAlert(t('counts.divergenceTitle'), t('counts.divergenceMessage'), [
-          { text: t('counts.refillCount'), style: 'cancel', onPress: () => setSecondChanceProductId(productId) },
-          { text: t('counts.keepCount'), onPress: () => doRegister(productId, qty) },
-        ]);
-        return;
-      }
+    // Validation 3: divergence check — always runs regardless of blind mode.
+    // If qty differs from system, offer ONE recount chance then register anyway.
+    const isDivergence = qty !== item.qtdSistema;
+    const isSecondChance = secondChanceProductId === productId;
+    if (isDivergence && !isSecondChance) {
+      showAlert(t('counts.divergenceTitle'), t('counts.divergenceMessage'), [
+        {
+          text: t('counts.refillCount'),
+          style: 'cancel',
+          onPress: () => {
+            setSecondChanceProductId(productId);
+            // Clear input and auto-focus so user can immediately retype
+            setItemInputs((prev) => {
+              const next = { ...prev };
+              delete next[productId];
+              return next;
+            });
+            setTimeout(() => inputRefs.current[productId]?.focus(), 150);
+          },
+        },
+        { text: t('counts.keepCount'), onPress: () => doRegister(productId, qty) },
+      ]);
+      return;
     }
     doRegister(productId, qty);
   };
@@ -190,7 +257,16 @@ export default function ContagemFatoScreen() {
 
   const toggleExpand = (productId: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    const willExpand = expandedId !== productId;
     setExpandedId((prev) => (prev === productId ? null : productId));
+
+    // Auto-focus input when expanding an uncounted product in editable mode
+    if (willExpand && !isReadOnly) {
+      const item = items.find((i) => i.produtoId === productId);
+      if (item && item.qtdContada == null) {
+        setTimeout(() => inputRefs.current[productId]?.focus(), 200);
+      }
+    }
   };
 
   // ─── Sorting ───────────────────────────────────────────────
@@ -271,27 +347,31 @@ export default function ContagemFatoScreen() {
         {/* ── Expanded section ── */}
         {isExpanded && (
           <View style={styles.expandedSection}>
-            {/* Detail rows */}
+            {/* Detail rows — system qty & balance hidden in blind count mode */}
             <View style={styles.detailGrid}>
-              <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>{t('counts.systemQty')}</Text>
-                <Text style={styles.detailValue}>{item.qtdSistema}</Text>
-              </View>
+              {!blindCount && (
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailLabel}>{t('counts.systemQty')}</Text>
+                  <Text style={styles.detailValue}>{item.qtdSistema}</Text>
+                </View>
+              )}
               <View style={styles.detailItem}>
                 <Text style={styles.detailLabel}>{t('counts.unitValue')}</Text>
                 <Text style={styles.detailValue}>{item.valorUnitario.toFixed(2)}</Text>
               </View>
-              <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>{t('counts.balance')}</Text>
-                <Text
-                  style={[
-                    styles.detailValue,
-                    hasDivergence && styles.divergenceValue,
-                  ]}
-                >
-                  {balance !== null ? (balance >= 0 ? `+${balance}` : String(balance)) : '—'}
-                </Text>
-              </View>
+              {!blindCount && (
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailLabel}>{t('counts.balance')}</Text>
+                  <Text
+                    style={[
+                      styles.detailValue,
+                      hasDivergence && styles.divergenceValue,
+                    ]}
+                  >
+                    {balance !== null ? (balance >= 0 ? `+${balance}` : String(balance)) : '—'}
+                  </Text>
+                </View>
+              )}
               <View style={styles.detailItem}>
                 <Text style={styles.detailLabel}>{t('counts.countedAt')}</Text>
                 <Text style={styles.detailValue}>
@@ -360,6 +440,24 @@ export default function ContagemFatoScreen() {
         </View>
       )}
 
+      {/* PDV offline warning banner */}
+      {hasOfflinePdvs && !isReadOnly && (
+        <View style={styles.pdvBanner}>
+          <View style={styles.pdvBannerIcon}>
+            <Ionicons name="warning-outline" size={18} color={theme.colors.danger} />
+          </View>
+          <View style={styles.pdvBannerContent}>
+            <Text style={styles.pdvBannerTitle}>{t('counts.pdvOfflineTitle')}</Text>
+            <Text style={styles.pdvBannerText}>
+              {pdvs
+                .filter((p) => p.status === 'OFFLINE')
+                .map((p) => p.nome)
+                .join(', ')}
+            </Text>
+          </View>
+        </View>
+      )}
+
       {/* Summary card */}
       <Card style={styles.summaryCard}>
         <View style={styles.summaryGrid}>
@@ -387,6 +485,16 @@ export default function ContagemFatoScreen() {
             value={`${totalCountedItems}/${totalSystemItems}`}
             theme={theme}
           />
+          {/* PDV status indicator */}
+          {pdvs.length > 0 && (
+            <SummaryItem
+              icon={hasOfflinePdvs ? 'alert-circle-outline' : 'desktop-outline'}
+              label="PDVs"
+              value={`${pdvsOnline}/${pdvs.length} online`}
+              theme={theme}
+              valueColor={hasOfflinePdvs ? theme.colors.danger : theme.colors.secondary}
+            />
+          )}
         </View>
 
         {/* Progress bar */}
@@ -472,16 +580,18 @@ interface SummaryItemProps {
   label: string;
   value: string;
   theme: Theme;
+  /** Optional override for the value text color (e.g. danger for offline PDVs). */
+  valueColor?: string;
 }
 
-function SummaryItem({ icon, label, value, theme }: SummaryItemProps) {
+function SummaryItem({ icon, label, value, theme, valueColor }: SummaryItemProps) {
   return (
     <View style={{ flex: 1, minWidth: '45%', gap: 2 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
         <Ionicons name={icon} size={13} color={theme.colors.textMuted} />
         <Text style={{ ...theme.typography.caption, color: theme.colors.textMuted }}>{label}</Text>
       </View>
-      <Text style={{ ...theme.typography.bodySmall, fontWeight: '600', color: theme.colors.text }}>
+      <Text style={{ ...theme.typography.bodySmall, fontWeight: '600', color: valueColor ?? theme.colors.text }}>
         {value}
       </Text>
     </View>
@@ -516,6 +626,40 @@ function createStyles(theme: Theme) {
       marginBottom: theme.spacing.md,
     },
     readOnlyText: {
+      ...theme.typography.caption,
+      color: theme.colors.textMuted,
+    },
+
+    /* ── PDV offline banner ── */
+    pdvBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+      marginBottom: theme.spacing.md,
+      padding: theme.spacing.md,
+      backgroundColor: theme.colors.danger + '08',
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.danger + '20',
+    },
+    pdvBannerIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: theme.colors.danger + '15',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    pdvBannerContent: {
+      flex: 1,
+      gap: 2,
+    },
+    pdvBannerTitle: {
+      ...theme.typography.bodySmall,
+      fontWeight: '700',
+      color: theme.colors.danger,
+    },
+    pdvBannerText: {
       ...theme.typography.caption,
       color: theme.colors.textMuted,
     },

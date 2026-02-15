@@ -42,7 +42,7 @@ export function Button({
           alignItems: 'center',
           justifyContent: 'center',
         },
-        fullWidth: { width: '100%', maxWidth: 280 },
+        fullWidth: { width: '100%' },
         primary: { backgroundColor: theme.colors.cta },
         secondary: { backgroundColor: theme.colors.primary },
         outline: { backgroundColor: 'transparent', borderWidth: 2, borderColor: theme.colors.primary },

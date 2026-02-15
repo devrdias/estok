@@ -334,6 +334,30 @@ export default function ConfiguracoesScreen() {
         </View>
       </Card>
 
+      {/* ── Developer Tools Section ── */}
+      {__DEV__ && (
+        <>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="construct-outline" size={16} color={theme.colors.textMuted} />
+            <Text style={styles.sectionTitle}>{t('settings.devTools')}</Text>
+          </View>
+          <Card style={styles.settingsCard}>
+            <View style={styles.settingRow}>
+              <Text style={styles.settingLabel}>{t('settings.devTools')}</Text>
+              <Text style={styles.settingDescription}>{t('settings.devToolsDescription')}</Text>
+              <Button
+                onPress={() => router.push('/(app)/mock-config' as never)}
+                variant="outline"
+                fullWidth
+                accessibilityLabel={t('settings.devTools')}
+              >
+                {t('mockConfig.title')}
+              </Button>
+            </View>
+          </Card>
+        </>
+      )}
+
       {/* ── Footer: Logout + Version ── */}
       <View style={styles.footer}>
         <Logo size={32} showWordmark accessibilityLabel="e-stok" />

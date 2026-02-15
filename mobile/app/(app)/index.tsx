@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth, UserRole } from '@/features/auth/model';
@@ -151,9 +151,12 @@ export default function HomeScreen() {
     }
   }, [erp]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  /** Reload dashboard every time the Home tab gains focus (e.g. after finalizing a count). */
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);

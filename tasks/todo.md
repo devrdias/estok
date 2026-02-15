@@ -81,6 +81,14 @@
 ### S – Fase 2: Aviso contagens paradas (Melhorias de produto)
 - [x] S1: Na listagem de contagens, aviso quando existem contagens EM_ANDAMENTO há mais de 7 dias (STALE_COUNT_DAYS); banner com i18n counts.staleBanner (interpolação count, days)
 
+### T – Fase 2: Gestão de PDVs (Pontos de Venda)
+- [x] T1: Entidade PDV (entities/pdv/model/types.ts) — id, nome, status (ONLINE/OFFLINE), estoqueId, endereco, ultimoPing
+- [x] T2: Contrato ERP: listPdvs (filtro por estoque), togglePdvStatus; tipo Pdv importado em erp-provider-types
+- [x] T3: Mock PDVs: 5 PDVs distribuídos por 3 estoques (2 OFFLINE); checkPdvOnline agora verifica estado real dos PDVs (não mais stub ok); persistência PDV em storage
+- [x] T4: Tela PDVs (app/(app)/pdvs.tsx): card por PDV com status, estoque, endereço, último ping; toggle conectar/desconectar; filtro por estoque; resumo (total, online, offline); pull-to-refresh
+- [x] T5: i18n PT + EN completo para seção PDVs (pdvs.*)
+- [x] T6: Tab PDVs no bottom nav (entre Contagens e Configurações, ícone desktop-outline)
+
 ## Progress Notes
 - 2025-02-06: Iniciada implementação conforme workflow-orchestration; plano em tasks/todo.md.
 - 2025-02-07: A1–A4 concluídos: Expo em mobile/, Expo Router, FSD, i18n PT/EN, rotas.
@@ -101,7 +109,39 @@
 - 2025-02-07: Fase 2 R (auditoria): Contagem com finalizadoPor/Em e excluidoPor/Em; mock finaliza preenchendo auditoria; soft-delete no mock; 25 testes.
 - 2025-02-07: Fase 2 S (aviso contagens paradas): banner na listagem quando há contagens em andamento há mais de 7 dias; i18n staleBanner.
 
+- 2026-02-14: Fase 2 T (gestão PDVs): entidade Pdv; listPdvs + togglePdvStatus no contrato ERP; mock com 5 PDVs (2 offline), checkPdvOnline verifica estado real; tela PDVs com cards, toggle, filtro por estoque, resumo; tab PDVs no nav; i18n PT+EN.
+- 2026-02-14: Fase 2 U (Mock ERP config): mock-config.ts store with latency/error/pdv/product config; provider uses simulateLatency + maybeThrowError + generateMockProducts; screen with segmented controls for all settings; hidden tab accessible from Settings; __DEV__ only.
+
+### U – Mock ERP Config Screen (Ferramentas de Desenvolvimento)
+- [x] U1: mock-config.ts — configuration store with persistence (apiLatency, errorRate, pdvScenario, productCount, storeSize); listeners; helpers (simulateLatency, maybeThrowError)
+- [x] U2: mock-erp-provider.ts — all methods use simulateLatency + maybeThrowError; createMockCount uses drawInventoryItems from catalog; applyPdvScenario + resetMockData exported
+- [x] U3: i18n PT + EN for mockConfig.* and settings.devTools*
+- [x] U4: mock-config.tsx screen — header, store section (size selector + summary), network section (latency + error rate), data section (product count + PDV scenario), actions section (reset data)
+- [x] U5: Hidden tab in _layout.tsx (href: null); dev tools button in configuracoes.tsx (__DEV__ only)
+
+### V – Dynamic Store Generation (CPlug API-based mock data)
+- [x] V1: mock-store-generator.ts — 12-category product catalog with realistic Brazilian products, prices (BRL), and quantities; 3 store presets (small/medium/large); deterministic random; generateStoreData, drawInventoryItems, getStoreSummary
+- [x] V2: mock-erp-provider.ts — replaced static MOCK_STOCKS/MOCK_PDVS/MOCK_ESTRUTURAS with dynamic data from generateStoreData; listStocks/getStock/listEstruturasMercadologicas use getStoreData(); seedPdvs/seedInitialCounts use generated data; category-aware inventory creation
+- [x] V3: mock-config.ts — added storeSize to MockConfig; exports StoreSize + StoreSizeValue
+- [x] V4: mock-config.tsx — store size selector (Mercearia/Mercado/Supermercado) with summary card; changing size triggers data reset; i18n storeSection/storeSize/storeSummary keys
+- [x] V5: index.ts — exports generateStoreData, drawInventoryItems, getStoreSummary, StoreSize, StoreSizeValue, GeneratedStoreData, CatalogProduct
+
 ## Review
-- Tabs seguem boas práticas (3–5 destinos, ícones + labels, cor ativa do design system).
+- Tabs seguem boas práticas (4 destinos agora: Início, Contagens, PDVs, Configurações).
 - Drawer não implementado (expo-router não exporta Drawer no index); Sair permanece em Configurações.
 - TypeScript e linter ok após inclusão de @expo/vector-icons.
+- checkPdvOnline now reads real PDV state instead of always returning ok:true. PDVs linked to a stock must all be ONLINE for counting registration to proceed.
+- Mock ERP config screen only visible in __DEV__ mode. Accessible via Settings > Developer Tools. Allows runtime testing of: API latency (0-5s), error simulation (never/20%/50%/always), product count per new inventory (3/10/50/100), PDV scenario (all online/mixed/all offline), and full data reset.
+- Dynamic store generation based on CPlug API structure: 12 categories of Brazilian products, 3 store size presets (small=mercearia, medium=mercado, large=supermercado). Stocks, PDVs, categories, and product catalog are all generated dynamically. Changing store size triggers a full data reset with confirmation dialog.
+
+### W – Data Preview & API Reference in Mock Config
+- [x] W1: Collapsible data preview section — Stocks (with PDV count per stock), PDVs (with status dot, address, stock), Categories (with product count), Products (first 15 + "N more" overflow)
+- [x] W2: API Reference section — 10 endpoint mappings (mock method → CPlug endpoint) with icons; "Open CPlug API documentation" link card that opens https://cplug.redocly.app/openapi
+- [x] W3: i18n PT + EN for previewSection, previewStocks/Pdvs/Categories/Products, previewMoreProducts, apiSection, apiDocsLink
+
+### X – Full Mock API Integration Audit
+- [x] X1: Verified all 5 screens (contagens/index, contagens/nova, contagens/[id], pdvs, mock-config) use `useErpProvider()` context — no direct imports of mockErpProvider
+- [x] X2: Verified ErpProvider contract (13 methods) fully implemented by mockErpProvider — listStocks, getStock, listEstruturasMercadologicas, listInventories, getInventory, createInventory, updateInventory, deleteInventory, listInventoryItems, registerCountedQuantity, checkPdvOnline, checkTransferenciasPendentes, listPdvs, togglePdvStatus
+- [x] X3: Fixed cplugErpProvider stub missing 4 methods (listPdvs, togglePdvStatus, checkPdvOnline, checkTransferenciasPendentes) — now satisfies full ErpProvider contract
+- [x] X4: Updated mock-erp-provider.test.ts — tests now use dynamic generated data (no hardcoded IDs); added PDV management tests (listPdvs, filter by stock, toggle); 29 tests passing
+- [x] X5: Verified data flow end-to-end: generated stocks/PDVs/categories flow into all screens; createInventory uses catalog products; checkPdvOnline verifies real PDV state; soft-delete audit trail works

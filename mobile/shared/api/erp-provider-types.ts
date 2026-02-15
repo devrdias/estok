@@ -4,6 +4,7 @@
  */
 import type { Contagem } from '@/entities/contagem/model/types';
 import type { Estoque } from '@/entities/estoque/model/types';
+import type { Pdv } from '@/entities/pdv/model/types';
 
 export interface ListInventoriesFilters {
   estoqueId?: string;
@@ -36,7 +37,7 @@ export interface CreateInventoryParams {
   /** Selected product structure IDs (multi-select). Empty array or undefined = all categories. */
   estruturaMercadologicaIds?: string[];
   /** Counting mode: store closed or store open during the count. */
-  modalidadeContagem?: 'LOJA_FECHADA' | 'LOJA_FUNCIONANDO';
+  modalidadeContagem?: 'LOJA_FECHADA' | 'LOJA_ABERTA';
 }
 
 /** Result of pre-register checks (US-4.4 PDV online, US-4.5 transferências pendentes). */
@@ -65,4 +66,11 @@ export interface ErpProvider {
   checkPdvOnline?(inventoryId: string): Promise<CheckResult>;
   /** US-4.5: Check if product has pending stock transfers. Optional. */
   checkTransferenciasPendentes?(inventoryId: string, productId: string): Promise<CheckResult>;
+
+  // ─── PDV management ────────────────────────────────────────
+
+  /** List all PDVs, optionally filtered by stock. */
+  listPdvs(filters?: { estoqueId?: string }): Promise<Pdv[]>;
+  /** Toggle a PDV's connection status (online ↔ offline). Returns the updated PDV. */
+  togglePdvStatus(pdvId: string): Promise<Pdv>;
 }

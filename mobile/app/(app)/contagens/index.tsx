@@ -245,7 +245,7 @@ export default function ContagensListScreen() {
 
   const modeLabel = (mode?: string): string | null => {
     if (mode === ModalidadeContagem.LOJA_FECHADA) return t('counts.storeClosed');
-    if (mode === ModalidadeContagem.LOJA_FUNCIONANDO) return t('counts.storeOpen');
+    if (mode === ModalidadeContagem.LOJA_ABERTA) return t('counts.storeOpen');
     return null;
   };
 

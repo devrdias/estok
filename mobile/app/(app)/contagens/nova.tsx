@@ -26,7 +26,7 @@ export default function NovaContagemScreen() {
   const [estruturas, setEstruturas] = useState<EstruturaMercadologica[]>([]);
   const [selectedEstruturaIds, setSelectedEstruturaIds] = useState<string[]>([]);
   const [valorAConsiderar, setValorAConsiderar] = useState<'VENDA' | 'CUSTO'>('VENDA');
-  const [modalidadeContagem, setModalidadeContagem] = useState<ModalidadeContagemValue>(ModalidadeContagem.LOJA_FECHADA);
+  const [modalidadeContagem, setModalidadeContagem] = useState<ModalidadeContagemValue>(ModalidadeContagem.LOJA_ABERTA);
   const [stockModalVisible, setStockModalVisible] = useState(false);
   const [estruturaModalVisible, setEstruturaModalVisible] = useState(false);
   const [storeModeHelpVisible, setStoreModeHelpVisible] = useState(false);
@@ -34,8 +34,16 @@ export default function NovaContagemScreen() {
   const styles = useMemo(
     () =>
       StyleSheet.create({
+        wrapper: {
+          flex: 1,
+          backgroundColor: theme.colors.background,
+        },
         scroll: { flex: 1 },
         container: {
+          padding: theme.spacing.lg,
+          paddingBottom: theme.spacing['2xl'],
+        },
+        footer: {
           padding: theme.spacing.lg,
           paddingBottom: theme.spacing['2xl'],
           backgroundColor: theme.colors.background,
@@ -162,112 +170,116 @@ export default function NovaContagemScreen() {
       : t('newCount.selectedCount', { count: selectedEstruturaIds.length });
 
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
-      <Pressable
-        style={styles.fieldBlock}
-        onPress={() => setStockModalVisible(true)}
-        accessibilityRole="button"
-        accessibilityLabel={`${t('newCount.stockLabel')}: ${selectedStock?.nome ?? ''}`}
-      >
-        <Text style={styles.label}>{t('newCount.stockLabel')}</Text>
-        <View style={styles.dropdownTrigger}>
-          <Text style={styles.dropdownValue} numberOfLines={1}>
-            {selectedStock ? selectedStock.nome : t('counts.allStocks')}
-          </Text>
-          <Text style={styles.dropdownChevron}>▼</Text>
-        </View>
-      </Pressable>
-
-      {estruturas.length > 0 && (
+    <View style={styles.wrapper}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
         <Pressable
           style={styles.fieldBlock}
-          onPress={() => setEstruturaModalVisible(true)}
+          onPress={() => setStockModalVisible(true)}
           accessibilityRole="button"
-          accessibilityLabel={`${t('newCount.structureLabel')}: ${estruturaDisplayLabel}`}
+          accessibilityLabel={`${t('newCount.stockLabel')}: ${selectedStock?.nome ?? ''}`}
         >
-          <Text style={styles.label}>{t('newCount.structureLabel')}</Text>
+          <Text style={styles.label}>{t('newCount.stockLabel')}</Text>
           <View style={styles.dropdownTrigger}>
             <Text style={styles.dropdownValue} numberOfLines={1}>
-              {estruturaDisplayLabel}
+              {selectedStock ? selectedStock.nome : t('counts.allStocks')}
             </Text>
             <Text style={styles.dropdownChevron}>▼</Text>
           </View>
         </Pressable>
-      )}
 
-      <View style={styles.field}>
-        <View style={styles.labelRow}>
-          <Text style={styles.labelInline}>{t('newCount.storeModeLabel')}</Text>
+        {estruturas.length > 0 && (
           <Pressable
-            style={styles.helpButton}
-            onPress={() => setStoreModeHelpVisible(true)}
+            style={styles.fieldBlock}
+            onPress={() => setEstruturaModalVisible(true)}
             accessibilityRole="button"
-            accessibilityLabel={t('newCount.storeModeHelpTitle')}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel={`${t('newCount.structureLabel')}: ${estruturaDisplayLabel}`}
           >
-            <Text style={styles.helpText}>?</Text>
+            <Text style={styles.label}>{t('newCount.structureLabel')}</Text>
+            <View style={styles.dropdownTrigger}>
+              <Text style={styles.dropdownValue} numberOfLines={1}>
+                {estruturaDisplayLabel}
+              </Text>
+              <Text style={styles.dropdownChevron}>▼</Text>
+            </View>
           </Pressable>
+        )}
+
+        <View style={styles.field}>
+          <View style={styles.labelRow}>
+            <Text style={styles.labelInline}>{t('newCount.storeModeLabel')}</Text>
+            <Pressable
+              style={styles.helpButton}
+              onPress={() => setStoreModeHelpVisible(true)}
+              accessibilityRole="button"
+              accessibilityLabel={t('newCount.storeModeHelpTitle')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.helpText}>?</Text>
+            </Pressable>
+          </View>
+          <View style={styles.row}>
+            <Pressable
+              style={[styles.chip, modalidadeContagem === ModalidadeContagem.LOJA_ABERTA && styles.chipActive]}
+              onPress={() => setModalidadeContagem(ModalidadeContagem.LOJA_ABERTA)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: modalidadeContagem === ModalidadeContagem.LOJA_ABERTA }}
+            >
+              <Text style={[styles.chipText, modalidadeContagem === ModalidadeContagem.LOJA_ABERTA && styles.chipTextActive]}>
+                {t('newCount.storeModeOpen')}
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.chip, modalidadeContagem === ModalidadeContagem.LOJA_FECHADA && styles.chipActive]}
+              onPress={() => setModalidadeContagem(ModalidadeContagem.LOJA_FECHADA)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: modalidadeContagem === ModalidadeContagem.LOJA_FECHADA }}
+            >
+              <Text style={[styles.chipText, modalidadeContagem === ModalidadeContagem.LOJA_FECHADA && styles.chipTextActive]}>
+                {t('newCount.storeModeClosed')}
+              </Text>
+            </Pressable>
+          </View>
         </View>
-        <View style={styles.row}>
-          <Pressable
-            style={[styles.chip, modalidadeContagem === ModalidadeContagem.LOJA_FECHADA && styles.chipActive]}
-            onPress={() => setModalidadeContagem(ModalidadeContagem.LOJA_FECHADA)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: modalidadeContagem === ModalidadeContagem.LOJA_FECHADA }}
-          >
-            <Text style={[styles.chipText, modalidadeContagem === ModalidadeContagem.LOJA_FECHADA && styles.chipTextActive]}>
-              {t('newCount.storeModeClosed')}
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.chip, modalidadeContagem === ModalidadeContagem.LOJA_FUNCIONANDO && styles.chipActive]}
-            onPress={() => setModalidadeContagem(ModalidadeContagem.LOJA_FUNCIONANDO)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: modalidadeContagem === ModalidadeContagem.LOJA_FUNCIONANDO }}
-          >
-            <Text style={[styles.chipText, modalidadeContagem === ModalidadeContagem.LOJA_FUNCIONANDO && styles.chipTextActive]}>
-              {t('newCount.storeModeOpen')}
-            </Text>
-          </Pressable>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>{t('newCount.valueToConsider')}</Text>
+          <View style={styles.row}>
+            <Pressable
+              style={[styles.chip, valorAConsiderar === 'VENDA' && styles.chipActive]}
+              onPress={() => setValorAConsiderar(ValorAConsiderar.VENDA)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: valorAConsiderar === 'VENDA' }}
+            >
+              <Text style={[styles.chipText, valorAConsiderar === 'VENDA' && styles.chipTextActive]}>
+                {t('newCount.salesValue')}
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.chip, valorAConsiderar === 'CUSTO' && styles.chipActive]}
+              onPress={() => setValorAConsiderar(ValorAConsiderar.CUSTO)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: valorAConsiderar === 'CUSTO' }}
+            >
+              <Text style={[styles.chipText, valorAConsiderar === 'CUSTO' && styles.chipTextActive]}>
+                {t('newCount.costValue')}
+              </Text>
+            </Pressable>
+          </View>
         </View>
+      </ScrollView>
+
+      <View style={styles.footer}>
+        <Button
+          onPress={handleCreate}
+          variant="primary"
+          disabled={!canSubmit || submitting}
+          loading={submitting}
+          accessibilityLabel={t('common.create')}
+          fullWidth
+        >
+          {t('common.create')}
+        </Button>
       </View>
-
-      <View style={styles.field}>
-        <Text style={styles.label}>{t('newCount.valueToConsider')}</Text>
-        <View style={styles.row}>
-          <Pressable
-            style={[styles.chip, valorAConsiderar === 'VENDA' && styles.chipActive]}
-            onPress={() => setValorAConsiderar(ValorAConsiderar.VENDA)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: valorAConsiderar === 'VENDA' }}
-          >
-            <Text style={[styles.chipText, valorAConsiderar === 'VENDA' && styles.chipTextActive]}>
-              {t('newCount.salesValue')}
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.chip, valorAConsiderar === 'CUSTO' && styles.chipActive]}
-            onPress={() => setValorAConsiderar(ValorAConsiderar.CUSTO)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: valorAConsiderar === 'CUSTO' }}
-          >
-            <Text style={[styles.chipText, valorAConsiderar === 'CUSTO' && styles.chipTextActive]}>
-              {t('newCount.costValue')}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-
-      <Button
-        onPress={handleCreate}
-        variant="primary"
-        disabled={!canSubmit || submitting}
-        loading={submitting}
-        accessibilityLabel={t('common.create')}
-        fullWidth
-      >
-        {t('common.create')}
-      </Button>
 
       <SelectModal
         visible={stockModalVisible}
@@ -295,6 +307,6 @@ export default function NovaContagemScreen() {
         title={t('newCount.storeModeHelpTitle')}
         body={t('newCount.storeModeHelpBody')}
       />
-    </ScrollView>
+    </View>
   );
 }
